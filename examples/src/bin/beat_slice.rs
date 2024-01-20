@@ -1,6 +1,15 @@
+//! Random beat slicer example patch
+//! To use this patch, you first need to create a new resource by uploading resources/AmenBreak.raw
+//! There are two ways to do this:
+//! 1. Use the patch library: https://www.rebeltech.org/patch-library/device
+//! 2. Use FirmwareSender
+//!
+//! Param A: Number of Slices
+//! Param B: Playback pitch (set to middle for 100%)
 #![no_main]
 #![no_std]
 #![feature(iter_array_chunks)]
+
 extern crate alloc;
 
 use alloc::boxed::Box;
@@ -27,8 +36,9 @@ fn run(mut pv: ProgramVector) -> ! {
         error("failed to load resource");
     };
 
+    // Get the resource data - if it's memory mapped we can use the slice directly,
+    // otherwise we can load the data into a Box and continue from there.
     let boxed_data: Box<[u8]>;
-
     let data = if resource.is_memory_mapped() {
         resource.data().unwrap()
     } else {
@@ -39,10 +49,12 @@ fn run(mut pv: ProgramVector) -> ! {
         boxed_data.as_ref()
     };
 
+    // Allocate an f32 sample buffer, and convert the samples from the resource file.
+    // Using something like byte_slice_cast would be nice here, but there's no way to ensure the resource bytes are correctly aligned.
     let mut sample_buffer = Buffer::new_mono(resource.size() / 2);
 
     for (insamp, buffsamp) in data
-        .iter()
+        .into_iter()
         .array_chunks::<2>()
         .map(|bytes| i16::from_le_bytes(bytes.map(|b| *b)))
         .zip(sample_buffer.samples_mut())
@@ -72,7 +84,7 @@ fn run(mut pv: ProgramVector) -> ! {
         let inc = parameters.get(PatchParameterId::PARAMETER_B) * 2.0;
 
         for frame in buffer.frames_mut() {
-            frame.fill(sample_buffer.index_lerp(index));
+            frame.fill(sample_buffer.index_cubic_smooth(index));
 
             index += inc;
 

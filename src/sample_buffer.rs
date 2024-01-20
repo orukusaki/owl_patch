@@ -11,7 +11,7 @@ use alloc::vec;
 use alloc::{boxed::Box, vec::Vec};
 use num_traits::MulAddAssign;
 
-use crate::interpolation::Lerp;
+use crate::interpolation::{Cubic, CubicSmooth, Lerp};
 
 /// Sample / Buffer conversion trait
 pub trait ConvertFrom<T: ?Sized> {
@@ -386,6 +386,46 @@ where
         let a = samples[index0];
         let b = samples[index1];
         Lerp::lerp(a, b, alpha)
+    }
+}
+
+impl<C> Buffer<Mono, C>
+where
+    C: Container,
+    C::Item: Cubic + Copy,
+{
+    /// Get sample value by partial index using cubic interpolation
+    pub fn index_cubic(&self, index: f32) -> C::Item {
+        let (index0, index1, index2, index3, alpha) =
+            crate::interpolation::quad_index(index, self.blocksize as f32);
+
+        let samples = self.samples.as_ref();
+
+        let a = samples[index0];
+        let b = samples[index1];
+        let c = samples[index2];
+        let d = samples[index3];
+        Cubic::cubic(a, b, c, d, alpha)
+    }
+}
+
+impl<C> Buffer<Mono, C>
+where
+    C: Container,
+    C::Item: CubicSmooth + Copy,
+{
+    /// Get sample value by partial index using smooth cubic interpolation
+    pub fn index_cubic_smooth(&self, index: f32) -> C::Item {
+        let (index0, index1, index2, index3, alpha) =
+            crate::interpolation::quad_index(index, self.blocksize as f32);
+
+        let samples = self.samples.as_ref();
+
+        let a = samples[index0];
+        let b = samples[index1];
+        let c = samples[index2];
+        let d = samples[index3];
+        CubicSmooth::cubic_smooth(a, b, c, d, alpha)
     }
 }
 

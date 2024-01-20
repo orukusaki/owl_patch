@@ -1,3 +1,5 @@
+//! Simple midi example
+//! A continuous Sawtooth oscillator, pitch it set by incoming midi notes
 #![no_main]
 #![no_std]
 extern crate alloc;
@@ -42,9 +44,7 @@ fn run(mut pv: ProgramVector) -> ! {
         for frame in buffer.frames_mut() {
             let sample = osc.next();
 
-            for s in frame.iter_mut() {
-                *s = sample;
-            }
+            frame.fill(sample);
         }
 
         buffer.convert_to(output);

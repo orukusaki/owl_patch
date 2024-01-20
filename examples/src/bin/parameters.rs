@@ -1,3 +1,7 @@
+//! Simple parameter example
+//! Parameter A controls the volume of audio passed through from the input to the output.
+//! CV Out 1 mirrors Parameter A
+//! Gate Out mirrors Gate In 1
 #![no_main]
 #![no_std]
 
@@ -8,7 +12,7 @@ use owl_patch::{
     PatchButtonId, PatchParameterId,
 };
 
-#[patch("Minimal")]
+#[patch("Parameters Example")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
     let mut buffer: Buffer<Channels, _> =

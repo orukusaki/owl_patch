@@ -4,9 +4,6 @@ use num_traits::Euclid;
 #[cfg(target_os = "none")]
 use num_traits::Float as _;
 
-#[cfg(feature = "fastmaths")]
-use super::fastmaths::FastFloat as _;
-
 /// Linear Interpolation
 pub trait Lerp {
     /// Interpolate two values, alpha should be between 0.0 and 1.0
@@ -46,6 +43,19 @@ pub fn partial_index(index: f32, wrap_len: f32) -> (usize, usize, f32) {
     (index0, index1, alpha)
 }
 
+/// Create (y0, y1, y2, y3, alpha) values from a float index and max length (wrapping)
+pub fn quad_index(index: f32, wrap_len: f32) -> (usize, usize, usize, usize, f32) {
+    let f = index.floor();
+    let alpha = index - f;
+
+    let index0 = Euclid::rem_euclid(&(f - 1.0), &wrap_len) as usize;
+    let index1 = Euclid::rem_euclid(&f, &wrap_len) as usize;
+    let index2 = Euclid::rem_euclid(&(f + 1.0), &wrap_len) as usize;
+    let index3 = Euclid::rem_euclid(&(f + 2.0), &wrap_len) as usize;
+
+    (index0, index1, index2, index3, alpha)
+}
+
 /// Cubic Interpolation
 pub trait Cubic {
     /// Interpolate between y1 and y2 using cubic interpolation
@@ -54,15 +64,8 @@ pub trait Cubic {
 
 impl Cubic for f32 {
     fn cubic(y0: Self, y1: Self, y2: Self, y3: Self, alpha: f32) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "fastmaths")] {
-                let alpha2 = alpha.fast_pow(2.0);
-                let alpha3 = alpha.fast_pow(3.0);
-            } else {
-                let alpha2 = alpha * alpha;
-                let alpha3 = alpha2 * alpha;
-            }
-        }
+        let alpha2 = alpha * alpha;
+        let alpha3 = alpha2 * alpha;
 
         let a = -y0 + y1 - y2 + y3;
         let b = 2.0 * y0 - 2.0 * y1 + y2 - y3;
@@ -74,21 +77,14 @@ impl Cubic for f32 {
 
 /// CubicSmooth Interpolation
 pub trait CubicSmooth {
-    /// Interpolate between y1 and y2 using cubic interpolation
+    /// Interpolate between y1 and y2 using smoothed cubic interpolation. More accurate but slower.
     fn cubic_smooth(y0: Self, y1: Self, y2: Self, y3: Self, alpha: f32) -> Self;
 }
 
 impl CubicSmooth for f32 {
     fn cubic_smooth(y0: Self, y1: Self, y2: Self, y3: Self, alpha: f32) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "fastmaths")] {
-                let alpha2 = alpha.fast_pow(2.0);
-                let alpha3 = alpha.fast_pow(3.0);
-            } else {
-                let alpha2 = alpha * alpha;
-                let alpha3 = alpha2 * alpha;
-            }
-        }
+        let alpha2 = alpha * alpha;
+        let alpha3 = alpha2 * alpha;
 
         let a = -0.5 * y0 + 1.5 * y1 - 1.5 * y2 + 0.5 * y3;
         let b = y0 - 2.5 * y1 + 2.0 * y2 - 0.5 * y3;
