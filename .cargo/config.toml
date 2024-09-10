@@ -1,0 +1,10 @@
+[build]
+target = "thumbv7em-none-eabihf"
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "target-cpu=cortex-m4",
+    "-C", "link-arg=-Towl.ld",
+]
+runner = "./run.sh"
