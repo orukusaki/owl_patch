@@ -1,10 +1,20 @@
 [build]
 target = "thumbv7em-none-eabihf"
 
-[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# Owl 2
+[target.thumbv7em-none-eabihf]
 rustflags = [
     "-C", "link-arg=--nmagic",
     "-C", "target-cpu=cortex-m4",
-    "-C", "link-arg=-Towl.ld",
+    "-C", "link-arg=-Towl2.ld",
 ]
 runner = "./run.sh"
+
+# Owl 3
+#[target.thumbv7em-none-eabihf]
+#rustflags = [
+#    "-C", "link-arg=--nmagic",
+#    "-C", "target-cpu=cortex-m7",
+#    "-C", "link-arg=-Towl3.ld",
+#]
+#runner = "./run.sh"
