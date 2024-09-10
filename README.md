@@ -6,6 +6,7 @@ any DSP libraries however, you are free to find / create your own.
 
 ## Licence
 TODO
+
 Note: I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
 Use of this software is entirely at your own risk. If by using it you brick your device, I will not be able to help you.
 
@@ -14,33 +15,38 @@ Use of this software is entirely at your own risk. If by using it you brick your
     rustup target add thumbv7em-none-eabihf
 2. Install `gcc-arm-none-eabi` and FirmwareSender.  See the instructions on https://github.com/RebelTechnology/OwlProgram for details
 3. Create a new binary package using Cargo, and add this repo as a dependency:
-   
-    [dependencies]
-    owl_patch = {path="../owl_patch"}
-
+```   
+[dependencies]
+owl_patch = {git = "https://github.com/orukusaki/owl_patch"}
+```
 4. Create a `.cargo/config.toml` file:
+```
+[build]
+target = "thumbv7em-none-eabihf"
 
-    [build]
-    target = "thumbv7em-none-eabihf"
-    
-    [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-    rustflags = [
-        "-C", "link-arg=--nmagic",
-        "-C", "target-cpu=cortex-m4",
-        "-C", "link-arg=-Towl.ld",
-    ]
-5. Copy one of the [examples](tree/main/examples) into `src/main.rs`
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "target-cpu=cortex-m4",
+    "-C", "link-arg=-Towl.ld",
+]
+```
+5. Copy one of the [examples](examples) into `src/main.rs`
 6. Build your patch
     cargo build --release
 7. Use `arm-none-eabi-objcopy` to get the final binary:
-    arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch> target/thumbv7em-none-eabihf/release/<your_patch>.bin
-8. Use FirwwareSender to upload the patch to your device.
+```
+arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch> target/thumbv7em-none-eabihf/release/<your_patch>.bin
+```
+9. Use FirmwareSender to upload the patch to your device.
 
 ## Running the Examples
 1. As above, make sure you have `gcc-arm-none-eabi`, `FirmwareSender` and the `thumbv7em-none-eabihf` Rust target installed
 2. Check out this repo
 3. Run with
-    cargo run --release --example fundsp
+```
+cargo run --release --example fundsp
+```
 
 ## Todo:
 * Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
