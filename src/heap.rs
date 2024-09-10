@@ -6,14 +6,6 @@ use core::alloc::{GlobalAlloc, Layout};
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-#[no_mangle]
-/// # Safety
-///
-/// This is a crash event
-pub unsafe extern "C" fn vApplicationMallocFailedHook() {
-    error(CHECKSUM_ERROR_STATUS, c"Memory overflow");
-}
-
 pub struct Heap {
     init: AtomicBool,
 }
@@ -89,4 +81,12 @@ impl From<&MemorySegment> for HeapRegion_t {
             xSizeInBytes: segment.size as usize,
         }
     }
+}
+
+#[no_mangle]
+/// # Safety
+///
+/// This is a crash event
+pub unsafe extern "C" fn vApplicationMallocFailedHook() {
+    error(CHECKSUM_ERROR_STATUS, c"Memory overflow");
 }
