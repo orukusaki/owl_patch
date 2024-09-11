@@ -1,6 +1,6 @@
 # Owl Patch
 
-Write Patches in Rust for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
+Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
 
 This repo contains all the foundational pieces needed to start creating patches:
 * Communication with the Host OS Firmware (via the ProgramVector)
@@ -8,6 +8,7 @@ This repo contains all the foundational pieces needed to start creating patches:
 * Access to audio io buffers, plus a simple in-memory buffer implementation
 * Access to input and output parameters & buttons
 * Midi send / receive
+* Linker magic needed to create a runnable patch binary
 
 ## License
 
@@ -57,7 +58,7 @@ rustflags = [
 5. Copy one of the [examples](examples) into `src/main.rs`
 6. Build your patch
 ```
-cargo build --release
+PATCHNAME="Your Patch Name" cargo build --release
 ```
 7. Use `arm-none-eabi-objcopy` to get the final binary:
 ```
