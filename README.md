@@ -1,4 +1,5 @@
 # Owl Patch
+
 Write Patches in Rust for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
 
 This repo contains all the foundational pieces needed to start creating patches:
@@ -8,10 +9,17 @@ This repo contains all the foundational pieces needed to start creating patches:
 * Access to input and output parameters & buttons
 * Midi send / receive
 
-## Licence
-TODO
+## License
 
-Note: I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version 2.0</a>
+or <a href="LICENSE-MIT">MIT license</a> at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this repository by you, as defined in the Apache-2.0 license,
+shall be dual licensed as above, without any additional terms or conditions.
+
+> [!NOTE]
+> I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
 Use of this software is entirely at your own risk. If by using it you brick your device, I will not be able to help you.
 
 ## Getting Started
