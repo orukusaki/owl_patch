@@ -1,7 +1,7 @@
 use std::env;
 use std::fs::{copy, File};
 use std::io::Write as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use bindgen::callbacks::DeriveInfo;
@@ -46,7 +46,7 @@ fn main() {
 
     if !PathBuf::from("OwlProgram/.git").exists() {
         let _ = Command::new("git")
-            .args(&["submodule", "update", "--init", "OwlProgram"])
+            .args(["submodule", "update", "--init", "OwlProgram"])
             .status();
     }
 
@@ -57,27 +57,18 @@ fn main() {
     let lib_source = owl_base_path.join("LibSource");
     let cpp_source = owl_base_path.join("Source");
 
-    generate_bindings(&cpp_source, &out_path, lib_source);
+    generate_bindings(&cpp_source, &out_path, &lib_source);
     compile_c_lib(&cpp_source, &out_path);
-    linker_args(&cpp_source, &out_path);
+    copy_linker_scripts(&cpp_source, &out_path);
 }
 
-fn linker_args(cpp_source: &PathBuf, out_path: &PathBuf) {
-    println!("cargo::rerun-if-env-changed=PLATFORM");
-
-    let platform = env::var("PLATFORM").unwrap_or("OWL2".to_string());
-
-    let link_script = match platform.as_str() {
-        "OWL1" => cpp_source.join("owl1.ld"),
-        "OWL2" => cpp_source.join("owl2.ld"),
-        "OWL3" => cpp_source.join("owl3.ld"),
-        _ => panic!("unknown PLATFORM, should be one of OWL1, OWL2, or OWL3"),
-    };
-
-    copy(link_script, out_path.join("owl.ld")).expect("failed to copy linker file");
+fn copy_linker_scripts(cpp_source: &Path, out_path: &Path) {
+    for file in ["owl1.ld", "owl2.ld", "owl3.ld"] {
+        copy(cpp_source.join(file), out_path.join(file)).expect("failed to copy linker file");
+    }
 }
 
-fn compile_c_lib(cpp_source: &PathBuf, out_path: &PathBuf) {
+fn compile_c_lib(cpp_source: &Path, out_path: &Path) {
     copy(cpp_source.join("startup.s"), out_path.join("startup.s"))
         .expect("failed to copy startup.s");
     copy(cpp_source.join("heap_5.c"), out_path.join("heap_5.c")).expect("failed to copy heap_5.c");
@@ -107,7 +98,7 @@ fn compile_c_lib(cpp_source: &PathBuf, out_path: &PathBuf) {
     println!("cargo:rustc-link-lib=startup");
 }
 
-fn generate_bindings(cpp_source: &PathBuf, out_path: &PathBuf, lib_source: PathBuf) {
+fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
     // Generate bundings
     let bindings = bindgen::Builder::default()
         .header("stddef.h")
@@ -197,7 +188,7 @@ fn generate_bindings(cpp_source: &PathBuf, out_path: &PathBuf, lib_source: PathB
         .expect("Couldn't write bindings!");
 }
 
-fn in_dir(dir: &PathBuf, f: impl FnOnce()) {
+fn in_dir(dir: &Path, f: impl FnOnce()) {
     let old_dir = std::env::current_dir().unwrap();
     std::env::set_current_dir(dir).unwrap();
     f();

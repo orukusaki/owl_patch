@@ -191,9 +191,12 @@ impl<'a> ProgramVector<'a> {
         }
     }
 
+    // TODO: change signature to accept correct fn type
     pub fn register_midi_callback(&mut self, callback: *mut c_void) {
         self.register_callback(SYSTEM_FUNCTION_MIDI, callback)
     }
+
+    // TODO: change signature to accept correct fn type
     pub fn register_draw_callback(&mut self, callback: *mut c_void) {
         self.register_callback(SYSTEM_FUNCTION_DRAW, callback)
     }
@@ -236,6 +239,7 @@ impl<'a> ProgramVector<'a> {
             }
         })
     }
+
     //TODO: return Result
     pub fn get_array<T>(&mut self, code: &[u8; 4usize]) -> Option<&[T]> {
         self.pv.serviceCall.and_then(|service_call| {
