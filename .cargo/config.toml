@@ -2,7 +2,7 @@
 target = "thumbv7em-none-eabihf"
 
 # Owl 2
-[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+[target.thumbv7em-none-eabihf]
 rustflags = [
     "-C", "link-arg=--nmagic",
     "-C", "target-cpu=cortex-m4",
@@ -11,7 +11,7 @@ rustflags = [
 runner = "./run.sh"
 
 # Owl 3
-#[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+#[target.thumbv7em-none-eabihf]
 #rustflags = [
 #    "-C", "link-arg=--nmagic",
 #    "-C", "target-cpu=cortex-m7",
