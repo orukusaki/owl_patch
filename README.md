@@ -1,7 +1,7 @@
 # Owl Patch
-
 Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
 
+## About
 This repo contains all the foundational pieces needed to start creating patches:
 * Communication with the Host OS Firmware (via the ProgramVector)
 * Heap memory allocator
@@ -24,18 +24,35 @@ shall be dual licensed as above, without any additional terms or conditions.
 Use of this software is entirely at your own risk. If by using it you brick your device, I will not be able to help you.
 
 ## Getting Started
+
 1. Make sure you have the `thumbv7em-none-eabihf` Rust target installed:
-```
+```bash
 rustup target add thumbv7em-none-eabihf
 ```
 2. Install `gcc-arm-none-eabi` and [FirmwareSender](https://github.com/pingdynasty/FirmwareSender/releases). See the instructions on https://github.com/RebelTechnology/OwlProgram for details.
 3. Create a new binary package using Cargo, and add this repo as a dependency:
-```   
+```toml   
 [dependencies]
 owl_patch = {git = "https://github.com/orukusaki/owl_patch"}
 ```
-4. Create a `.cargo/config.toml` file:
+It is also a good idea to add this to your Cargo.toml:
+```toml
+[profile.release]
+strip = "debuginfo"
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = "thin"
+opt-level = "s"
+overflow-checks = false
+
+[profile.release.package."*"]
+strip = "debuginfo"
+opt-level = "s"
 ```
+4. Create a `.cargo/config.toml` file:
+```toml
 [build]
 target = "thumbv7em-none-eabihf"
 
@@ -57,16 +74,17 @@ rustflags = [
 ```
 5. Copy one of the [examples](examples) into `src/main.rs`
 6. Build your patch
-```
+```bash
 PATCHNAME="Your Patch Name" cargo build --release
 ```
 7. Use `arm-none-eabi-objcopy` to get the final binary:
-```
+```bash
 arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch> target/thumbv7em-none-eabihf/release/<your_patch>.bin
 ```
 9. Use `FirmwareSender` to upload the patch to your device.
 
 ## Running the Examples
+
 1. As above, make sure you have `gcc-arm-none-eabi`, `FirmwareSender` and the `thumbv7em-none-eabihf` Rust target installed
 2. Check out this repo
 3. Run with
@@ -74,10 +92,17 @@ arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch
 cargo run --release --example mimimal
 ```
 
+## Supported devices
+The examples in this repo have only been tested on a Befaco Lich using an Owl2 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
+
 ## Todo:
-* Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
-* Load resource files with OWL_SERVICE_LOAD_RESOURCE service call
+
+- [] Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
+- [] Load resource files with OWL_SERVICE_LOAD_RESOURCE service call
+- [] Add example using `cmsis_dsp`
+
 ## Maybe pile:
-* Get system log / pow tables
-* FFT init service calls with OWL_SERVICE_ARM_RFFT_FAST_INIT_F32 and OWL_SERVICE_ARM_CFFT_INIT_F32
-* Service version - OWL_SERVICE_VERSION
+
+- [] Get system log / pow tables
+- [] FFT init service calls with OWL_SERVICE_ARM_RFFT_FAST_INIT_F32 and OWL_SERVICE_ARM_CFFT_INIT_F32
+- [] Service version - OWL_SERVICE_VERSION
