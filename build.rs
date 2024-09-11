@@ -74,8 +74,8 @@ fn compile_c_lib(cpp_source: &Path, out_path: &Path) {
     copy(cpp_source.join("heap_5.c"), out_path.join("heap_5.c")).expect("failed to copy heap_5.c");
     copy(cpp_source.join("heap.h"), out_path.join("heap.h")).expect("failed to copy heap.h");
 
-    let progname = env::var("PROGNAME").unwrap_or("Rust Patch".to_string());
-    println!("cargo::rerun-if-env-changed=PROGNAME");
+    let progname = env::var("PATCHNAME").unwrap_or("Rust Patch".to_string());
+    println!("cargo::rerun-if-env-changed=PATCHNAME");
 
     let mut progname_file = File::create(out_path.join("progname.s")).unwrap();
     progname_file
