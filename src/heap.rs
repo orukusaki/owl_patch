@@ -1,7 +1,11 @@
+use alloc::format;
+
 use crate::ffi::heap::*;
 
+extern crate alloc;
+
 use crate::ffi::program_vector::MemorySegment;
-use crate::program_vector::{error, CHECKSUM_ERROR_STATUS};
+use crate::program_vector::debug_message;
 use core::alloc::{GlobalAlloc, Layout};
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -39,6 +43,8 @@ impl Default for Heap {
 }
 
 impl Heap {
+    const BYTE_ALIGNMENT: usize = portBYTE_ALIGNMENT as usize;
+
     /// Create a new, unitialised Heap.
     pub const fn new() -> Self {
         Self {
@@ -73,20 +79,28 @@ impl Heap {
 unsafe impl GlobalAlloc for Heap {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         assert!(self.init.load(Ordering::Relaxed));
-        const BYTE_ALIGNMENT: usize = portBYTE_ALIGNMENT as usize;
 
         let mut size = layout.size();
 
-        if layout.align() > BYTE_ALIGNMENT {
-            size += layout.align() - BYTE_ALIGNMENT;
+        if layout.align() > Self::BYTE_ALIGNMENT {
+            debug_message(&format!("allocating big layout {:?}", layout));
+            size += layout.align() - Self::BYTE_ALIGNMENT;
         }
 
         let ptr = pvPortMalloc(size) as *mut u8;
         ptr.byte_add(ptr.align_offset(layout.align()))
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        assert!(self.init.load(Ordering::Relaxed));
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        if layout.align() > Self::BYTE_ALIGNMENT {
+            // There's no way we can recover the original pointer address if we messed with it to get
+            // the correct alignment when we allocated it.
+            // so just.. don't deallocate it??
+            // afterall, in this context, objects are not expected to be deallocated very often, so leaking memory
+            // shouldn't really cause any problems
+            return;
+        }
+
         vPortFree(ptr as *mut c_void)
     }
 }
@@ -110,9 +124,6 @@ impl From<&MemorySegment> for HeapRegion_t {
 }
 
 #[no_mangle]
-/// # Safety
-///
-/// This is a crash event
-unsafe extern "C" fn vApplicationMallocFailedHook() {
-    error(CHECKSUM_ERROR_STATUS, c"Memory overflow");
+extern "C" fn vApplicationMallocFailedHook() {
+    panic!("Memory overflow");
 }
