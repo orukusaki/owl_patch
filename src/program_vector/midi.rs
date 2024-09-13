@@ -7,6 +7,7 @@ use critical_section::Mutex;
 
 use crate::midi_message::MidiMessage;
 
+#[derive(Clone, Copy)]
 pub struct Midi {
     send_callback: Option<extern "C" fn(u8, u8, u8, u8)>,
 }
@@ -15,7 +16,7 @@ impl Midi {
         Self { send_callback }
     }
 
-    pub fn on_receive(callback: impl FnMut(MidiMessage) + Send + 'static) {
+    pub fn on_receive(&self, callback: impl FnMut(MidiMessage) + Send + 'static) {
         critical_section::with(|cs| MIDI_CALLBACK.replace(cs, Some(Box::new(callback))));
     }
 

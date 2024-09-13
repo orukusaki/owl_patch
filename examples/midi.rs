@@ -8,7 +8,7 @@ use num_traits::Float;
 use owl_patch::{
     heap::Heap,
     midi_message::MidiMessage,
-    program_vector::{midi::Midi, AudioFormat, AudioSettings, ProgramVector},
+    program_vector::{AudioFormat, AudioSettings, ProgramVector},
     sample_buffer::{Buffer, ConvertTo, Interleaved, Sample, Samplei32, Samplew16},
 };
 
@@ -34,22 +34,21 @@ where
     F: Sample<BaseType = i32> + From<f32> + 'static,
     f32: From<F>,
 {
-    let before = HEAP.free_heap_size();
+    let free_mem_start = HEAP.free_heap_size();
 
     // allocate a working buffer (uses vec intenally)
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
     pv.register_patch("Midi Test", 2, 2);
-    pv.set_heap_bytes_used(before - HEAP.free_heap_size());
 
-    let (mut audio, _, midi) = pv.split::<F>();
+    let (mut audio, _, midi, mut meta) = pv.split::<F>();
 
     let (mut osc, inc) = Sawtooth::new();
 
     // Set up our midi handler - it sets the oscillator frequency for any note-on messages, plus echos
     // all messages back to the sender
     let mul = 2.0 / audio_settings.sample_rate as f32;
-    Midi::on_receive(move |message: MidiMessage| {
+    midi.on_receive(move |message: MidiMessage| {
         if message.is_note_on() {
             let note = message.note();
             let hz = 440.0 * 2.0f32.powf((note as f32 - 69.0) / 12.0);
@@ -58,6 +57,7 @@ where
         midi.send(message);
     });
 
+    meta.set_heap_bytes_used(free_mem_start - HEAP.free_heap_size());
     // Main audio loop
     audio.run(|_input, mut output| {
         for frame in buffer.frames_mut() {
@@ -72,7 +72,6 @@ where
     });
 }
 
-#[derive(Default)]
 struct Sawtooth {
     increment: Arc<AtomicU32>,
     phase: f32,

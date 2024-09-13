@@ -33,7 +33,7 @@ where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
 {
-    let before = HEAP.free_heap_size();
+    let free_mem_start = HEAP.free_heap_size();
 
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
     let mut buffer: Buffer<f32, Interleaved> =
@@ -53,15 +53,14 @@ where
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
 
-    pv.set_heap_bytes_used(before - HEAP.free_heap_size());
-
-    let (mut audio, mut parameters, _) = pv.split();
+    let (mut audio, parameters, _, mut meta) = pv.split();
 
     // Set up input parameters
     parameters.register(PatchParameterId::PARAMETER_A, "Center");
     parameters.register(PatchParameterId::PARAMETER_B, "Res");
     parameters.register(PatchParameterId::PARAMETER_C, "Split");
 
+    meta.set_heap_bytes_used(free_mem_start - HEAP.free_heap_size());
     audio.run(|input, mut output| {
         let param_a = parameters.get(PatchParameterId::PARAMETER_A);
         let centre = param_a * param_a * 20000.0;

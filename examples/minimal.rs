@@ -30,18 +30,18 @@ where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
 {
-    let before = HEAP.free_heap_size();
+    let free_mem_start = HEAP.free_heap_size();
 
     // allocate a working buffer (uses vec intenally)
     let mut buffer: Buffer<f32, Channels> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
     // Let the OS know we're ready to start processing audio - the channel count is ignored
     pv.register_patch("Mimimal Rust Patch", 2, 2);
-    pv.set_heap_bytes_used(before - HEAP.free_heap_size());
-
     // Split up the PV into separate resources - saves us from needing to hold multiple references to it.
     // pv is consumed here, so all setup stuff must be done first
-    let (mut audio, _, _) = pv.split();
+    let (mut audio, _, _, mut meta) = pv.split();
+
+    meta.set_heap_bytes_used(free_mem_start - HEAP.free_heap_size());
 
     // Main audio loop
     audio.run(|input, mut output| {
