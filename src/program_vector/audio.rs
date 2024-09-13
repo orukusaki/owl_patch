@@ -3,8 +3,7 @@ use core::{marker::PhantomData, slice};
 use crate::sample_buffer::{BufferMut, BufferRef, Interleaved, Sample};
 
 use super::{
-    error, AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK,
-    AUDIO_FORMAT_FORMAT_MASK, CONFIGURATION_ERROR_STATUS,
+    AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
 };
 
 pub struct AudioSettings {
@@ -29,7 +28,7 @@ impl AudioFormat {
         let format = match value & AUDIO_FORMAT_FORMAT_MASK {
             AUDIO_FORMAT_24B16 => Self::Format24B16,
             AUDIO_FORMAT_24B32 => Self::Format24B32,
-            _ => error(CONFIGURATION_ERROR_STATUS, c"bad audio format"),
+            _ => panic!("bad audio format"),
         };
 
         (format, channels as usize)
@@ -66,7 +65,7 @@ impl<'a, F: Sample<BaseType = i32>> AudioBuffers<'a, F> {
     ) -> ! {
         assert!(core::mem::size_of::<F>() == core::mem::size_of::<i32>());
         let Some(program_ready) = self.program_ready else {
-            error(CONFIGURATION_ERROR_STATUS, c"no audio available")
+            panic!("no audio available")
         };
         loop {
             // Safety: Trusting the OS that the provided function is safe to call

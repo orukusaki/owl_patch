@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use crate::ffi::program_vector::{self as ffi, ProgramVectorAudioStatus};
+use crate::ffi::program_vector as ffi;
 use crate::ffi::service_call::{
     OWL_SERVICE_GET_ARRAY, OWL_SERVICE_OK, OWL_SERVICE_REGISTER_CALLBACK,
     OWL_SERVICE_REQUEST_CALLBACK, SYSTEM_FUNCTION_DRAW, SYSTEM_FUNCTION_MIDI,
@@ -19,8 +19,8 @@ use parameters::button_changed_callback;
 pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
 
 mod messages;
+pub use messages::debug_message;
 use messages::Messages;
-pub use messages::{debug_message, error};
 
 pub mod midi;
 
@@ -44,13 +44,12 @@ pub const AUDIO_FORMAT_FORMAT_MASK: u8 = ffi::AUDIO_FORMAT_FORMAT_MASK as u8;
 pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 
 use alloc::ffi::CString;
-use core::ffi::CStr;
 use core::ptr::NonNull;
 use core::{
     ffi::c_void,
     mem::MaybeUninit,
     slice,
-    sync::atomic::{compiler_fence, AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 // The Program Vector is how we communicate with the OS. It is initialised by the OS at runtime.
@@ -58,7 +57,7 @@ use core::{
 // in the binary by the linker script
 #[link_section = ".pv"]
 #[used]
-static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
+pub(crate) static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
 static TAKEN: AtomicBool = AtomicBool::new(false);
 
 unsafe impl Sync for FfiProgramVector {}
@@ -70,21 +69,17 @@ pub struct ProgramVector<'a> {
 
 impl ProgramVector<'static> {
     pub fn instance() -> Self {
-        let taken = TAKEN.swap(true, Ordering::Relaxed);
+        if TAKEN.swap(true, Ordering::Relaxed) {
+            panic!("program vector already taken");
+        }
+
         // Safety: Our atomic flag means a 2nd call to this function will error
         let pv = unsafe { PROGRAM_VECTOR.assume_init_mut() };
-
-        let mut instance = Self { pv };
-
-        if taken {
-            // TODO: hold on, is this ok? In this situation there _are_ two mutable references to PROGRAM_VECTOR
-            // So although we're chosing to crash here, isn't this still UB?
-            instance.error(CONFIGURATION_ERROR_STATUS, c"program vector already taken");
-        }
+        let instance = Self { pv };
 
         // if the checksum is valid, then the vector was initislised
         if instance.pv.checksum < PROGRAM_VECTOR_CHECKSUM_V11 {
-            instance.error(CONFIGURATION_ERROR_STATUS, c"program vector checksum error");
+            panic!("program vector checksum error");
         }
 
         instance
@@ -98,11 +93,7 @@ impl ProgramVector<'static> {
         let _ = self.register_callback(SYSTEM_FUNCTION_MIDI, midi_callback as *mut _);
         let midi = Midi::new(self.get_midi_send_cb());
 
-        Messages::init(
-            &mut self.pv.error,
-            &mut self.pv.message,
-            self.pv.programStatus,
-        );
+        Messages::init(&mut self.pv.message);
 
         let audio = AudioBuffers::new(
             &self.pv.audio_input,
@@ -147,7 +138,7 @@ impl<'a> ProgramVector<'a> {
         const MAX: usize = 4;
 
         if self.pv.checksum < PROGRAM_VECTOR_CHECKSUM_V13 {
-            error(CHECKSUM_ERROR_STATUS, c"bad checksum");
+            panic!("bad checksum");
         }
 
         let count = (0..MAX)
@@ -162,7 +153,7 @@ impl<'a> ProgramVector<'a> {
             })
             .last()
             .unwrap_or_else(|| {
-                error(CHECKSUM_ERROR_STATUS, c"pv.heapLocations.is_null");
+                panic!("pv.heapLocations.is_null");
             });
 
         // Safety: We've checked and the data at least seems to be valid. It is not expected to change
@@ -264,21 +255,5 @@ impl<'a> ProgramVector<'a> {
             (ret == OWL_SERVICE_OK as i32 && !ptr.is_null())
                 .then(|| unsafe { slice::from_raw_parts(ptr as *const T, size) })
         })
-    }
-
-    // Only for use during startup, after splitting, the static functions in messages are used
-    fn error(&mut self, code: i8, message: &CStr) -> ! {
-        self.pv.error = code;
-        self.pv.message = message.as_ptr() as *mut i8;
-        if let Some(program_status) = self.pv.programStatus {
-            // This function never returns
-            unsafe {
-                program_status(ProgramVectorAudioStatus::AUDIO_ERROR_STATUS);
-            }
-            unreachable!();
-        }
-        loop {
-            compiler_fence(Ordering::SeqCst);
-        }
     }
 }

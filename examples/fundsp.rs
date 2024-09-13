@@ -40,6 +40,7 @@ where
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     pv.register_patch("FunDsp Example", 2, 2);
+    let (mut audio, parameters, _, mut meta) = pv.split();
 
     // Set up FunDsp objects
     let lp_centre = shared(10000.0);
@@ -49,11 +50,10 @@ where
     let lp = || (pass() | var(&lp_centre) | var(&q)) >> lowpass();
     let hp = || (pass() | var(&hp_centre) | var(&q)) >> highpass();
 
-    let mut unit = Box::new((lp() | lp()) >> (hp() | hp()) >> limiter_stereo(0.03, 0.1));
+    let mut unit = Box::new((lp() | lp()) >> (hp() | hp()) >> limiter_stereo(0.00, 0.1));
+
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
-
-    let (mut audio, parameters, _, mut meta) = pv.split();
 
     // Set up input parameters
     parameters.register(PatchParameterId::PARAMETER_A, "Center");
