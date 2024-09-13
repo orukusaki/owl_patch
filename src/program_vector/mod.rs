@@ -24,6 +24,9 @@ pub use messages::{debug_message, error};
 
 pub mod midi;
 
+pub mod meta;
+pub use meta::Meta;
+
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
 pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
 pub const OWL_RACK_HARDWARE: u8 = ffi::OWL_RACK_HARDWARE as u8;
@@ -89,7 +92,7 @@ impl ProgramVector<'static> {
 
     pub fn split<'a, F: Sample<BaseType = i32>>(
         mut self,
-    ) -> (AudioBuffers<'a, F>, Parameters<'a>, Midi) {
+    ) -> (AudioBuffers<'a, F>, Parameters<'a>, Midi, Meta<'a>) {
         let audio_settings = self.audio_settings();
 
         let _ = self.register_callback(SYSTEM_FUNCTION_MIDI, midi_callback as *mut _);
@@ -118,11 +121,14 @@ impl ProgramVector<'static> {
             self.pv.setButton,
         );
 
-        (audio, parameters, midi)
-    }
+        let meta = Meta::new(
+            &self.pv.cycles_per_block,
+            &mut self.pv.heap_bytes_used,
+            &self.pv.checksum,
+            &self.pv.hardware_version,
+        );
 
-    pub fn set_heap_bytes_used(&mut self, heap_bytes_used: usize) {
-        self.pv.heap_bytes_used = heap_bytes_used as u32
+        (audio, parameters, midi, meta)
     }
 }
 
@@ -135,13 +141,6 @@ impl<'a> ProgramVector<'a> {
             channels,
             format,
         }
-    }
-
-    fn get_midi_send_cb(&mut self) -> Option<extern "C" fn(u8, u8, u8, u8)> {
-        // # Safety
-        // We receve a raw function pointer, and hope that it relates to a function
-        // with the expected signature, but have no way to really verify this.
-        unsafe { core::mem::transmute(self.request_callback(SYSTEM_FUNCTION_MIDI).ok()) }
     }
 
     pub fn memory_segments(&self) -> &[MemorySegment] {
@@ -191,6 +190,13 @@ impl<'a> ProgramVector<'a> {
         self.register_callback(SYSTEM_FUNCTION_DRAW, callback as *mut _)
     }
 
+    fn get_midi_send_cb(&mut self) -> Option<extern "C" fn(u8, u8, u8, u8)> {
+        // # Safety
+        // We receve a raw function pointer, and hope that it relates to a function
+        // with the expected signature, but have no way to really verify this.
+        unsafe { core::mem::transmute(self.request_callback(SYSTEM_FUNCTION_MIDI).ok()) }
+    }
+
     fn register_callback(
         &mut self,
         code: &[u8; 4usize],
@@ -212,7 +218,7 @@ impl<'a> ProgramVector<'a> {
             .ok_or("service call returned error")
     }
 
-    pub fn request_callback(&mut self, code: &[u8; 4usize]) -> Result<NonNull<()>, &str> {
+    fn request_callback(&mut self, code: &[u8; 4usize]) -> Result<NonNull<()>, &str> {
         let service_call = self.pv.serviceCall.ok_or("service call not available")?;
 
         let mut callback: *mut c_void = core::ptr::null_mut();
