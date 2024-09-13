@@ -5,23 +5,13 @@ Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](
 This repo contains all the foundational pieces needed to start creating patches:
 * Communication with the Host OS Firmware (via the ProgramVector)
 * Heap memory allocator
-* Access to audio io buffers, plus a simple in-memory buffer implementation
+* Access to audio io buffers, plus a basic in-memory buffer implementation
 * Access to input and output parameters & buttons
 * Midi send / receive
 * Linker magic needed to create a runnable patch binary
 
-## License
-
-Licensed under either of <a href="LICENSE-APACHE">Apache License, Version 2.0</a>
-or <a href="LICENSE-MIT">MIT license</a> at your option.
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in this repository by you, as defined in the Apache-2.0 license,
-shall be dual licensed as above, without any additional terms or conditions.
-
 > [!NOTE]
 > I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
-Use of this software is entirely at your own risk. If by using it you brick your device, I will not be able to help you.
 
 ## Getting Started
 
@@ -95,14 +85,26 @@ cargo run --release --example mimimal
 ## Supported devices
 The examples in this repo have only been tested on a Befaco Lich using an Owl2 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
 
-## Todo:
+## Project state
+Experimental. Will probabably always be that way.
+
+### Todo List:
 
 - [] Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
 - [] Load resource files with OWL_SERVICE_LOAD_RESOURCE service call
 - [] Add example using `cmsis_dsp`
 
-## Maybe pile:
+### Maybe pile:
 
 - [] Get system log / pow tables
 - [] FFT init service calls with OWL_SERVICE_ARM_RFFT_FAST_INIT_F32 and OWL_SERVICE_ARM_CFFT_INIT_F32
 - [] Service version - OWL_SERVICE_VERSION
+
+## License
+
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version 2.0</a>
+or <a href="LICENSE-MIT">MIT license</a> at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this repository by you, as defined in the Apache-2.0 license,
+shall be dual licensed as above, without any additional terms or conditions.

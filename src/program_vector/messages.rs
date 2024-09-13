@@ -26,12 +26,15 @@ impl Messages {
         status: Option<unsafe extern "C" fn(ProgramVectorAudioStatus)>,
     ) {
         critical_section::with(|cs| {
-            MESSAGES.borrow(cs).borrow_mut().replace(Self {
-                error,
-                message,
-                status,
-                buffer: [0; 64],
-            })
+            MESSAGES.replace(
+                cs,
+                Some(Self {
+                    error,
+                    message,
+                    status,
+                    buffer: [0; 64],
+                }),
+            )
         });
     }
 
@@ -60,7 +63,7 @@ impl Messages {
 
 pub fn error(code: i8, message: &CStr) -> ! {
     critical_section::with(|cs| {
-        if let Some(messager) = MESSAGES.borrow(cs).borrow_mut().as_mut() {
+        if let Some(messager) = MESSAGES.borrow_ref_mut(cs).as_mut() {
             messager.error(code, message)
         }
     });
@@ -72,7 +75,7 @@ pub fn error(code: i8, message: &CStr) -> ! {
 
 pub fn debug_message(message: &str) {
     critical_section::with(|cs| {
-        if let Some(messager) = MESSAGES.borrow(cs).borrow_mut().as_mut() {
+        if let Some(messager) = MESSAGES.borrow_ref_mut(cs).as_mut() {
             messager.debug_message(message)
         }
     });

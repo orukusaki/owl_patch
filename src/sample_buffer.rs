@@ -103,12 +103,18 @@ impl From<f32> for Samplew16 {
     }
 }
 
+/// Marker trait to indicate how samples are stored in a buffer
 pub trait SampleStorage {}
 
 pub struct Channels;
-impl SampleStorage for Channels {}
 
+/// Samples stored one channel at a time
+/// eg: `[l0, l1, l2, ..., r0, r1, r2, ...]`
+impl SampleStorage for Channels {}
 pub struct Interleaved;
+
+/// Samples stored interleaved
+/// eg: `[l0, r0, l1, r1, l2, r2 ...]`
 impl SampleStorage for Interleaved {}
 
 pub struct Buffer<F: Sample, S: SampleStorage> {
