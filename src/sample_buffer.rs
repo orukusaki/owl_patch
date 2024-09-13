@@ -288,7 +288,7 @@ where
     }
 }
 
-// interleave
+// Channels -> Interleaved
 impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Channels>>
     for BufferMut<'a, F, Interleaved>
 {
@@ -309,7 +309,7 @@ impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Channel
     }
 }
 
-// deinterleave
+// Interleaved -> Channels
 impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Interleaved>>
     for BufferMut<'a, F, Channels>
 {
