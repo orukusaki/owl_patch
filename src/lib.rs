@@ -1,10 +1,10 @@
 #![no_std]
 #![feature(exclusive_wrapper)]
 #![feature(array_chunks)]
+#![doc = include_str!("../README.md")]
 
-pub mod ffi;
+mod ffi;
 pub mod heap;
-// pub mod kernal;
 pub mod midi_message;
 pub mod program_vector;
 pub mod sample_buffer;
@@ -22,8 +22,5 @@ unsafe fn panic_handler(info: &PanicInfo) -> ! {
     error(0x01, CStr::from_bytes_with_nul_unchecked(&buff));
 }
 
-/// # Safety
-///
-/// Dummy implementation to make the linker happy
 #[no_mangle]
-pub unsafe extern "C" fn __libc_init_array() {}
+unsafe extern "C" fn __libc_init_array() {}

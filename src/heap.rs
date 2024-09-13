@@ -6,6 +6,28 @@ use core::alloc::{GlobalAlloc, Layout};
 use core::ffi::c_void;
 use core::sync::atomic::{AtomicBool, Ordering};
 
+/// Heap memory allocator - deferring to The FreeRTOS allocator in heap_5.c
+///
+/// # Example
+/// ```
+/// #![no_main]
+/// #![no_std]
+/// extern crate alloc;
+///
+/// use owl_patch::heap::Heap;
+/// use owl_patch::program_vector::ProgramVector;    
+///
+/// #[global_allocator]
+/// pub static HEAP: Heap = Heap::new();
+///
+/// #[no_mangle]
+/// pub extern "C" fn main() -> ! {
+///   let pv = ProgramVector::instance();
+///   // Heap must be initialised before any heap allocations are attempted
+///   HEAP.init(pv.memory_segments());
+///   // The heap is now initialised, and we can use heap allocated types like Box, Vec etc
+/// }
+/// ```
 pub struct Heap {
     init: AtomicBool,
 }
@@ -17,13 +39,16 @@ impl Default for Heap {
 }
 
 impl Heap {
+    /// Create a new, unitialised Heap.
     pub const fn new() -> Self {
         Self {
             init: AtomicBool::new(false),
         }
     }
 
-    // MUST be called before any allocations are attempted
+    /// Initialise the Heap, providing memory segments to use
+    ///
+    /// MUST be called before any allocations are attempted
     pub fn init(&self, segments: &[MemorySegment]) {
         let mut regions: [HeapRegion_t; 5] = Default::default();
         // regions must be null-terminated, so we must never write to the last entry
@@ -38,6 +63,7 @@ impl Heap {
         self.init.store(true, Ordering::Relaxed);
     }
 
+    /// Get free heap memory in bytes
     pub fn free_heap_size(&self) -> usize {
         assert!(self.init.load(Ordering::Relaxed));
         unsafe { xPortGetFreeHeapSize() }
@@ -87,6 +113,6 @@ impl From<&MemorySegment> for HeapRegion_t {
 /// # Safety
 ///
 /// This is a crash event
-pub unsafe extern "C" fn vApplicationMallocFailedHook() {
+unsafe extern "C" fn vApplicationMallocFailedHook() {
     error(CHECKSUM_ERROR_STATUS, c"Memory overflow");
 }

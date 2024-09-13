@@ -5,9 +5,7 @@ use crate::ffi::service_call::{
     OWL_SERVICE_GET_ARRAY, OWL_SERVICE_OK, OWL_SERVICE_REGISTER_CALLBACK,
     OWL_SERVICE_REQUEST_CALLBACK, SYSTEM_FUNCTION_DRAW, SYSTEM_FUNCTION_MIDI,
 };
-use crate::midi_message::MidiMessage;
 use crate::sample_buffer::Sample;
-use alloc::boxed::Box;
 use ffi::MemorySegment;
 
 pub use ffi::ProgramVector as FfiProgramVector;
@@ -16,11 +14,15 @@ mod audio;
 pub use audio::{AudioBuffers, AudioFormat, AudioSettings};
 
 mod parameters;
+use midi::{midi_callback, Midi};
+use parameters::button_changed_callback;
 pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
 
 mod messages;
 use messages::Messages;
 pub use messages::{debug_message, error};
+
+pub mod midi;
 
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
 pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
@@ -87,14 +89,12 @@ impl ProgramVector<'static> {
 
     pub fn split<'a, F: Sample<BaseType = i32>>(
         mut self,
-    ) -> (
-        AudioBuffers<'a, F>,
-        Parameters<'a>,
-        Box<impl Fn(MidiMessage)>,
-    ) {
+    ) -> (AudioBuffers<'a, F>, Parameters<'a>, Midi) {
         let audio_settings = self.audio_settings();
 
-        let midi_send = self.get_midi_send_cb();
+        let _ = self.register_callback(SYSTEM_FUNCTION_MIDI, midi_callback as *mut _);
+        let midi = Midi::new(self.get_midi_send_cb());
+
         Messages::init(
             &mut self.pv.error,
             &mut self.pv.message,
@@ -108,17 +108,17 @@ impl ProgramVector<'static> {
             self.pv.programReady,
         );
 
+        self.pv.buttonChangedCallback = Some(button_changed_callback);
+
         let parameters = Parameters::new(
-            &self.pv.parameters,
-            self.pv.parameters_size as usize,
+            unsafe { slice::from_raw_parts(self.pv.parameters, self.pv.parameters_size as usize) },
             &self.pv.buttons,
             self.pv.registerPatchParameter,
             self.pv.setPatchParameter,
             self.pv.setButton,
-            &mut self.pv.buttonChangedCallback,
         );
 
-        (audio, parameters, midi_send)
+        (audio, parameters, midi)
     }
 
     pub fn set_heap_bytes_used(&mut self, heap_bytes_used: usize) {
@@ -137,18 +137,11 @@ impl<'a> ProgramVector<'a> {
         }
     }
 
-    fn get_midi_send_cb(&mut self) -> Box<impl Fn(MidiMessage)> {
+    fn get_midi_send_cb(&mut self) -> Option<extern "C" fn(u8, u8, u8, u8)> {
         // # Safety
         // We receve a raw function pointer, and hope that it relates to a function
         // with the expected signature, but have no way to really verify this.
-        let midi_send_callback: Option<extern "C" fn(u8, u8, u8, u8)> =
-            unsafe { core::mem::transmute(self.request_callback(SYSTEM_FUNCTION_MIDI)) };
-
-        Box::new(move |message: MidiMessage| {
-            if let Some(f) = midi_send_callback {
-                f(message.port, message.d0, message.d1, message.d2)
-            }
-        })
+        unsafe { core::mem::transmute(self.request_callback(SYSTEM_FUNCTION_MIDI).ok()) }
     }
 
     pub fn memory_segments(&self) -> &[MemorySegment] {
@@ -191,53 +184,56 @@ impl<'a> ProgramVector<'a> {
         }
     }
 
-    // TODO: change signature to accept correct fn type
-    pub fn register_midi_callback(&mut self, callback: *mut c_void) {
-        self.register_callback(SYSTEM_FUNCTION_MIDI, callback)
+    pub fn register_draw_callback(
+        &mut self,
+        callback: fn(pixels: *mut u8, width: u16, height: u16),
+    ) -> Result<(), &str> {
+        self.register_callback(SYSTEM_FUNCTION_DRAW, callback as *mut _)
     }
 
-    // TODO: change signature to accept correct fn type
-    pub fn register_draw_callback(&mut self, callback: *mut c_void) {
-        self.register_callback(SYSTEM_FUNCTION_DRAW, callback)
-    }
+    fn register_callback(
+        &mut self,
+        code: &[u8; 4usize],
+        callback: *mut c_void,
+    ) -> Result<(), &str> {
+        let service_call = self.pv.serviceCall.ok_or("service call not available")?;
 
-    //TODO: return Result
-    fn register_callback(&mut self, code: &[u8; 4usize], callback: *mut c_void) {
         let mut args = [code.as_ptr() as *mut _, callback];
-        if let Some(service_call) = self.pv.serviceCall {
-            unsafe {
-                service_call(
-                    OWL_SERVICE_REGISTER_CALLBACK as i32,
-                    args.as_mut_ptr(),
-                    args.len() as i32,
-                )
-            };
-        }
+
+        let ret = unsafe {
+            service_call(
+                OWL_SERVICE_REGISTER_CALLBACK as i32,
+                args.as_mut_ptr(),
+                args.len() as i32,
+            )
+        };
+        (ret == OWL_SERVICE_OK as i32)
+            .then_some(())
+            .ok_or("service call returned error")
     }
 
-    //TODO: return Result
-    pub fn request_callback(&mut self, code: &[u8; 4usize]) -> Option<NonNull<()>> {
-        self.pv.serviceCall.and_then(|service_call| {
-            let mut callback: *mut c_void = core::ptr::null_mut();
-            let mut args = [
-                code.as_ptr() as *mut _,
-                // Pass a pointer to the callback pointer, allowing the OS to write to it
-                &mut callback as *mut *mut c_void as *mut c_void,
-            ];
-            let ret = unsafe {
-                service_call(
-                    OWL_SERVICE_REQUEST_CALLBACK as i32,
-                    args.as_mut_ptr(),
-                    args.len() as i32,
-                )
-            };
+    pub fn request_callback(&mut self, code: &[u8; 4usize]) -> Result<NonNull<()>, &str> {
+        let service_call = self.pv.serviceCall.ok_or("service call not available")?;
 
-            if ret == OWL_SERVICE_OK as i32 {
-                NonNull::new(callback as *mut ())
-            } else {
-                None
-            }
-        })
+        let mut callback: *mut c_void = core::ptr::null_mut();
+        let mut args = [
+            code.as_ptr() as *mut _,
+            // Pass a pointer to the callback pointer, allowing the OS to write to it
+            &mut callback as *mut *mut c_void as *mut c_void,
+        ];
+        let ret = unsafe {
+            service_call(
+                OWL_SERVICE_REQUEST_CALLBACK as i32,
+                args.as_mut_ptr(),
+                args.len() as i32,
+            )
+        };
+
+        if ret == OWL_SERVICE_OK as i32 {
+            NonNull::new(callback as *mut ()).ok_or("bad callback")
+        } else {
+            Err("service call returned error")
+        }
     }
 
     //TODO: return Result
