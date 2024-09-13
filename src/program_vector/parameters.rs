@@ -9,6 +9,7 @@ use num::FromPrimitive;
 pub use crate::ffi::openware_midi_control::{PatchButtonId, PatchParameterId};
 
 /// Handles the Patch input and output parameters; knobs and buttons etc
+#[derive(Clone, Copy)]
 pub struct Parameters<'a> {
     parameters: &'a [i16],
     buttons: &'a u16,
@@ -34,7 +35,7 @@ impl<'a> Parameters<'a> {
         }
     }
 
-    pub fn register(&mut self, pid: PatchParameterId, name: &str) {
+    pub fn register(&self, pid: PatchParameterId, name: &str) {
         if let Some(register_patch_parameter) = self.register_patch_parameter {
             let c_name = CString::new(name).expect("failed to create paremeter name string");
             // Safety: c_name does not need to exist after this function call, so it can safely be
@@ -43,21 +44,24 @@ impl<'a> Parameters<'a> {
         }
     }
 
-    pub fn set(&mut self, pid: PatchParameterId, value: f32) {
+    pub fn set(&self, pid: PatchParameterId, value: f32) {
         if let Some(set_patch_parameter) = self.set_patch_parameter {
             unsafe { set_patch_parameter(pid as u8, (value * 4096.0) as i16) }
         }
     }
 
-    pub fn get(&mut self, pid: PatchParameterId) -> f32 {
+    pub fn get(&self, pid: PatchParameterId) -> f32 {
         self.parameters[pid as usize] as f32 / 4096.0
     }
 
-    pub fn on_button_changed(callback: impl FnMut(PatchButtonId, u16, u16) + Send + 'static) {
+    pub fn on_button_changed(
+        &self,
+        callback: impl FnMut(PatchButtonId, u16, u16) + Send + 'static,
+    ) {
         critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, Some(Box::new(callback))));
     }
 
-    pub fn set_button(&mut self, bid: PatchButtonId, state: bool) {
+    pub fn set_button(&self, bid: PatchButtonId, state: bool) {
         if let Some(set_button) = self.set_button {
             unsafe { set_button(bid as u8, if state { 0xfff } else { 0 }, 0) };
         }
@@ -68,15 +72,14 @@ impl<'a> Parameters<'a> {
     }
 }
 
-unsafe impl<'a> Sync for Parameters<'a> {}
+#[allow(clippy::type_complexity)]
+static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
+    Mutex::new(RefCell::new(None));
 
-pub unsafe extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
+pub extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
     let mut cb = critical_section::with(|cs| BUTTON_CALLBACK.take(cs));
     if let Some(ref mut callback) = cb {
         callback(PatchButtonId::from_u8(bid).unwrap(), state, samples);
     }
     critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, cb));
 }
-
-static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
-    Mutex::new(RefCell::new(None));

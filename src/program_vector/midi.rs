@@ -7,6 +7,7 @@ use critical_section::Mutex;
 
 use crate::midi_message::MidiMessage;
 
+#[derive(Clone, Copy)]
 pub struct Midi {
     send_callback: Option<extern "C" fn(u8, u8, u8, u8)>,
 }
@@ -15,7 +16,7 @@ impl Midi {
         Self { send_callback }
     }
 
-    pub fn on_receive(callback: impl FnMut(MidiMessage) + Send + 'static) {
+    pub fn on_receive(&self, callback: impl FnMut(MidiMessage) + Send + 'static) {
         critical_section::with(|cs| MIDI_CALLBACK.replace(cs, Some(Box::new(callback))));
     }
 
@@ -26,10 +27,11 @@ impl Midi {
     }
 }
 
+#[allow(clippy::type_complexity)]
 static MIDI_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(MidiMessage) + Send>>>> =
     Mutex::new(RefCell::new(None));
 
-pub unsafe extern "C" fn midi_callback(port: u8, status: u8, d1: u8, d2: u8) {
+pub extern "C" fn midi_callback(port: u8, status: u8, d1: u8, d2: u8) {
     let mut cb = critical_section::with(|cs| MIDI_CALLBACK.take(cs));
     if let Some(ref mut callback) = cb {
         callback(MidiMessage::new(port, status, d1, d2));
