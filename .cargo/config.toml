@@ -8,14 +8,8 @@ target = "thumbv7em-none-eabihf"
 
 [target.thumbv7em-none-eabihf]
 rustflags = [
- #   "-C", "link-arg=--nmagic",
- #   "-C", "link-arg=-Towl2.ld",
-
-
-    "-C", "target-cpu=cortex-m4",
-
-   "-C", "linker=arm-none-eabi-gcc",
-   "-C", "link-arg=-Wl,-Towl2.ld",
-   "-C", "link-arg=-nostartfiles",
+   "-C", "link-arg=--nmagic",
+   "-C", "link-arg=-Towl2.ld",
+   "-C", "target-cpu=cortex-m4",
 ]
 runner = "./run.sh"
