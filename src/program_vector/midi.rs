@@ -27,10 +27,11 @@ impl Midi {
     }
 }
 
+#[allow(clippy::type_complexity)]
 static MIDI_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(MidiMessage) + Send>>>> =
     Mutex::new(RefCell::new(None));
 
-pub unsafe extern "C" fn midi_callback(port: u8, status: u8, d1: u8, d2: u8) {
+pub extern "C" fn midi_callback(port: u8, status: u8, d1: u8, d2: u8) {
     let mut cb = critical_section::with(|cs| MIDI_CALLBACK.take(cs));
     if let Some(ref mut callback) = cb {
         callback(MidiMessage::new(port, status, d1, d2));

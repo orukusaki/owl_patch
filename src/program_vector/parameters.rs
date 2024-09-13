@@ -72,15 +72,14 @@ impl<'a> Parameters<'a> {
     }
 }
 
-unsafe impl<'a> Sync for Parameters<'a> {}
+#[allow(clippy::type_complexity)]
+static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
+    Mutex::new(RefCell::new(None));
 
-pub unsafe extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
+pub extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
     let mut cb = critical_section::with(|cs| BUTTON_CALLBACK.take(cs));
     if let Some(ref mut callback) = cb {
         callback(PatchButtonId::from_u8(bid).unwrap(), state, samples);
     }
     critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, cb));
 }
-
-static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
-    Mutex::new(RefCell::new(None));

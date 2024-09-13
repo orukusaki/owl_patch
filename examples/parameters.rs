@@ -47,7 +47,6 @@ where
     // Postfixing the name with ">" designates the parameter as an output
     parameters.register(PatchParameterId::PARAMETER_F, "MyOutput>");
 
-    // let params = params.clone();
     parameters.on_button_changed(move |bid: PatchButtonId, state: u16, _samples: u16| {
         if bid == PatchButtonId::BUTTON_1 {
             parameters.set_button(PatchButtonId::BUTTON_3, state > 0);
