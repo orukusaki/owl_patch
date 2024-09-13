@@ -1,43 +1,36 @@
 extern crate alloc;
 
-use core::{ffi::c_char, slice};
+use core::{cell::RefCell, ffi::c_char};
 
-use alloc::ffi::CString;
+use alloc::{boxed::Box, ffi::CString};
+use critical_section::Mutex;
+use num::FromPrimitive;
 
 pub use crate::ffi::openware_midi_control::{PatchButtonId, PatchParameterId};
 
-// Handles the Patch input and output parameters; knobs and buttons etc
+/// Handles the Patch input and output parameters; knobs and buttons etc
 pub struct Parameters<'a> {
-    parameters: &'a *mut i16,
-    size: usize,
+    parameters: &'a [i16],
     buttons: &'a u16,
     register_patch_parameter: Option<unsafe extern "C" fn(id: u8, name: *const c_char)>,
     set_patch_parameter: Option<unsafe extern "C" fn(id: u8, value: i16)>,
     set_button: Option<unsafe extern "C" fn(id: u8, state: u16, samples: u16)>,
-    button_changed_callback:
-        &'a mut Option<unsafe extern "C" fn(bid: u8, state: u16, samples: u16)>,
 }
 
 impl<'a> Parameters<'a> {
     pub fn new(
-        parameters: &'a *mut i16,
-        size: usize,
+        parameters: &'a [i16],
         buttons: &'a u16,
         register_patch_parameter: Option<unsafe extern "C" fn(id: u8, name: *const c_char)>,
         set_patch_parameter: Option<unsafe extern "C" fn(id: u8, value: i16)>,
         set_button: Option<unsafe extern "C" fn(id: u8, state: u16, samples: u16)>,
-        button_changed_callback: &'a mut Option<
-            unsafe extern "C" fn(bid: u8, state: u16, samples: u16),
-        >,
     ) -> Self {
         Self {
             parameters,
-            size,
             buttons,
             register_patch_parameter,
             set_patch_parameter,
             set_button,
-            button_changed_callback,
         }
     }
 
@@ -57,19 +50,11 @@ impl<'a> Parameters<'a> {
     }
 
     pub fn get(&mut self, pid: PatchParameterId) -> f32 {
-        self.values()[pid as usize] as f32 / 4096.0
+        self.parameters[pid as usize] as f32 / 4096.0
     }
 
-    pub fn values(&self) -> &[i16] {
-        unsafe { slice::from_raw_parts_mut(*self.parameters, self.size) }
-    }
-
-    pub fn set_button_changed_callback(
-        &mut self,
-        button_changed_callback: unsafe extern "C" fn(bid: u8, state: u16, samples: u16),
-    ) {
-        self.button_changed_callback
-            .replace(button_changed_callback);
+    pub fn on_button_changed(callback: impl FnMut(PatchButtonId, u16, u16) + Send + 'static) {
+        critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, Some(Box::new(callback))));
     }
 
     pub fn set_button(&mut self, bid: PatchButtonId, state: bool) {
@@ -82,3 +67,16 @@ impl<'a> Parameters<'a> {
         (*self.buttons) & (1 << bid as u8) != 0
     }
 }
+
+unsafe impl<'a> Sync for Parameters<'a> {}
+
+pub unsafe extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
+    let mut cb = critical_section::with(|cs| BUTTON_CALLBACK.take(cs));
+    if let Some(ref mut callback) = cb {
+        callback(PatchButtonId::from_u8(bid).unwrap(), state, samples);
+    }
+    critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, cb));
+}
+
+static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
+    Mutex::new(RefCell::new(None));

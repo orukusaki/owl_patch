@@ -77,7 +77,7 @@ impl<'a, F: Sample<BaseType = i32>> AudioBuffers<'a, F> {
                 // The type F is the same size as i32, as asserted above
                 unsafe {
                     slice::from_raw_parts(
-                        core::mem::transmute::<*mut i32, *const F>(*self.input),
+                        (*self.input) as *const F,
                         self.settings.blocksize * self.settings.channels,
                     )
                 },
@@ -89,7 +89,7 @@ impl<'a, F: Sample<BaseType = i32>> AudioBuffers<'a, F> {
                 // The type F is the same size as i32, as asserted above
                 unsafe {
                     slice::from_raw_parts_mut(
-                        core::mem::transmute::<*mut i32, *mut F>(*self.output),
+                        (*self.output) as *mut F,
                         self.settings.blocksize * self.settings.channels,
                     )
                 },

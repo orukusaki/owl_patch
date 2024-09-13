@@ -1,20 +1,21 @@
+[alias]
+r = "run2"
+run2 = "run --release --config target.thumbv7em-none-eabihf.rustflags=[\"-C\",\"target-cpu=cortex-m4\",\"-C\",\"link-arg=-Towl2.ld\"]"
+run3 = "run --release --config target.thumbv7em-none-eabihf.rustflags=[\"-C\",\"target-cpu=cortex-m7\",\"-C\",\"link-arg=-Towl3.ld\"]"
+
 [build]
 target = "thumbv7em-none-eabihf"
 
-# Owl 2
 [target.thumbv7em-none-eabihf]
 rustflags = [
-    "-C", "link-arg=--nmagic",
+ #   "-C", "link-arg=--nmagic",
+ #   "-C", "link-arg=-Towl2.ld",
+
+
     "-C", "target-cpu=cortex-m4",
-    "-C", "link-arg=-Towl2.ld",
+
+   "-C", "linker=arm-none-eabi-gcc",
+   "-C", "link-arg=-Wl,-Towl2.ld",
+   "-C", "link-arg=-nostartfiles",
 ]
 runner = "./run.sh"
-
-# Owl 3
-#[target.thumbv7em-none-eabihf]
-#rustflags = [
-#    "-C", "link-arg=--nmagic",
-#    "-C", "target-cpu=cortex-m7",
-#    "-C", "link-arg=-Towl3.ld",
-#]
-#runner = "./run.sh"
