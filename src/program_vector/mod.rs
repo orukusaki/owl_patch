@@ -135,7 +135,7 @@ impl<'a> ProgramVector<'a> {
     }
 
     pub fn memory_segments(&self) -> &[MemorySegment] {
-        const MAX: usize = 4;
+        const MAX: usize = 5;
 
         if self.pv.checksum < PROGRAM_VECTOR_CHECKSUM_V13 {
             panic!("bad checksum");
@@ -158,7 +158,7 @@ impl<'a> ProgramVector<'a> {
 
         // Safety: We've checked and the data at least seems to be valid. It is not expected to change
         // during the program's runtime, so effectively the lifetime is 'static
-        unsafe { slice::from_raw_parts(self.pv.heapLocations, count) }
+        unsafe { slice::from_raw_parts(self.pv.heapLocations, count + 1) }
     }
 
     // Register the patch by calling the provided function in the pv. It seems like the channel counts
