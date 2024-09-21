@@ -71,8 +71,6 @@ fn copy_linker_scripts(cpp_source: &Path, out_path: &Path) {
 fn compile_c_lib(cpp_source: &Path, out_path: &Path) {
     copy(cpp_source.join("startup.s"), out_path.join("startup.s"))
         .expect("failed to copy startup.s");
-    copy(cpp_source.join("heap_5.c"), out_path.join("heap_5.c")).expect("failed to copy heap_5.c");
-    copy(cpp_source.join("heap.h"), out_path.join("heap.h")).expect("failed to copy heap.h");
 
     let progname = env::var("PATCHNAME").unwrap_or("Rust Patch".to_string());
     println!("cargo::rerun-if-env-changed=PATCHNAME");
@@ -86,7 +84,6 @@ fn compile_c_lib(cpp_source: &Path, out_path: &Path) {
         let mut c_builder = cc::Build::new();
 
         c_builder.file(out_path.join("startup.s"));
-        c_builder.file(out_path.join("heap_5.c"));
 
         for flag in GCC_ARGS {
             c_builder.flag(flag);
@@ -99,31 +96,6 @@ fn compile_c_lib(cpp_source: &Path, out_path: &Path) {
 }
 
 fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
-    // Generate bundings
-    let bindings = bindgen::Builder::default()
-        .header("stddef.h")
-        .header(cpp_source.join("heap.h").to_str().unwrap())
-        .use_core()
-        .allowlist_type("HeapRegion")
-        .allowlist_type("HeapRegion_t")
-        .allowlist_function("pvPortMalloc")
-        .allowlist_function("vPortFree")
-        .allowlist_function("xPortGetFreeHeapSize")
-        .allowlist_function("xPortGetMinimumEverFreeHeapSize")
-        .allowlist_function("vPortDefineHeapRegions")
-        .allowlist_function("vPortGetSizeBlock")
-        .allowlist_var("portBYTE_ALIGNMENT")
-        .size_t_is_usize(true)
-        .prepend_enum_name(false)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .clang_args(GCC_ARGS)
-        .generate()
-        .expect("Unable to generate bindings");
-
-    bindings
-        .write_to_file(out_path.join("heap.rs"))
-        .expect("Couldn't write bindings!");
-
     let bindings = bindgen::Builder::default()
         .header(cpp_source.join("ProgramVector.h").to_str().unwrap())
         .use_core()
