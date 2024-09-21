@@ -4,23 +4,27 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use owl_patch::{
-    heap::Heap,
     program_vector::{AudioFormat, AudioSettings, PatchParameterId, ProgramVector},
     sample_buffer::{Buffer, ConvertFrom, ConvertTo, Interleaved, Sample, Samplei32, Samplew16},
 };
 
 use fundsp::hacker32::*;
+use talc::*;
 
 #[global_allocator]
-pub static HEAP: Heap = Heap::new();
+static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
     // The ProgramVector lets us talk to the OS
     let pv = ProgramVector::instance();
     // Heap must be initialised before any heap allocations are attempted
-    HEAP.init(pv.memory_segments());
-
+    {
+        let mut talc = ALLOCATOR.lock();
+        pv.memory_segments().iter().for_each(|seg| unsafe {
+            let _ = talc.claim(seg.into());
+        });
+    }
     let audio_settings = pv.audio_settings();
     match audio_settings.format {
         AudioFormat::Format24B16 => run::<Samplew16>(pv, audio_settings),
@@ -33,8 +37,6 @@ where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
 {
-    let free_mem_start = HEAP.free_heap_size();
-
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
@@ -60,7 +62,8 @@ where
     parameters.register(PatchParameterId::PARAMETER_B, "Res");
     parameters.register(PatchParameterId::PARAMETER_C, "Split");
 
-    meta.set_heap_bytes_used(free_mem_start - HEAP.free_heap_size());
+    meta.set_heap_bytes_used(ALLOCATOR.lock().get_counters().total_allocated_bytes as usize);
+
     audio.run(|input, mut output| {
         let param_a = parameters.get(PatchParameterId::PARAMETER_A);
         let centre = param_a * param_a * 20000.0;
