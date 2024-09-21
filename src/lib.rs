@@ -4,7 +4,6 @@
 #![doc = include_str!("../README.md")]
 
 mod ffi;
-pub mod heap;
 pub mod midi_message;
 pub mod program_vector;
 pub mod sample_buffer;

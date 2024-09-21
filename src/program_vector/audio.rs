@@ -69,6 +69,7 @@ impl<'a, F: Sample<BaseType = i32>> AudioBuffers<'a, F> {
         };
         loop {
             // Safety: Trusting the OS that the provided function is safe to call
+            // Note: any callbacks are invoked during this call
             unsafe { program_ready() };
 
             let input = BufferRef::new(

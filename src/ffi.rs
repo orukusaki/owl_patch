@@ -4,9 +4,6 @@
 #![allow(non_snake_case)]
 #![allow(clippy::upper_case_acronyms)]
 
-pub mod heap {
-    include!(concat!(env!("OUT_DIR"), "/heap.rs"));
-}
 pub mod midi_message {
     include!(concat!(env!("OUT_DIR"), "/midi_message.rs"));
 }

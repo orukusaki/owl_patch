@@ -257,3 +257,10 @@ impl<'a> ProgramVector<'a> {
         })
     }
 }
+
+#[cfg(feature = "talc")]
+impl From<&MemorySegment> for talc::Span {
+    fn from(segment: &MemorySegment) -> talc::Span {
+        talc::Span::from_base_size(segment.location, segment.size as usize)
+    }
+}

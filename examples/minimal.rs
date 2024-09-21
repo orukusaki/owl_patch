@@ -3,20 +3,25 @@
 extern crate alloc;
 
 use owl_patch::{
-    heap::Heap,
     program_vector::{AudioFormat, AudioSettings, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo, Sample, Samplei32, Samplew16},
 };
+use talc::*;
 
 #[global_allocator]
-pub static HEAP: Heap = Heap::new();
+static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
     // The ProgramVector lets us talk to the OS
     let pv = ProgramVector::instance();
     // Heap must be initialised before any heap allocations are attempted
-    HEAP.init(pv.memory_segments());
+    {
+        let mut talc = ALLOCATOR.lock();
+        pv.memory_segments().iter().for_each(|seg| unsafe {
+            let _ = talc.claim(seg.into());
+        });
+    }
 
     let audio_settings = pv.audio_settings();
     match audio_settings.format {
@@ -30,8 +35,6 @@ where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
 {
-    let free_mem_start = HEAP.free_heap_size();
-
     // allocate a working buffer (uses vec intenally)
     let mut buffer: Buffer<f32, Channels> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
@@ -41,7 +44,7 @@ where
     // pv is consumed here, so all setup stuff must be done first
     let (mut audio, _, _, mut meta) = pv.split();
 
-    meta.set_heap_bytes_used(free_mem_start - HEAP.free_heap_size());
+    meta.set_heap_bytes_used(ALLOCATOR.lock().get_counters().total_allocated_bytes as usize);
 
     // Main audio loop
     audio.run(|input, mut output| {

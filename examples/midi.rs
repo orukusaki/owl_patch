@@ -6,21 +6,27 @@ use alloc::sync::Arc;
 use core::sync::atomic::{AtomicU32, Ordering};
 use num_traits::Float;
 use owl_patch::{
-    heap::Heap,
     midi_message::MidiMessage,
     program_vector::{AudioFormat, AudioSettings, ProgramVector},
     sample_buffer::{Buffer, ConvertTo, Interleaved, Sample, Samplei32, Samplew16},
 };
 
+use talc::*;
+
 #[global_allocator]
-pub static HEAP: Heap = Heap::new();
+static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
     // The ProgramVector lets us talk to the OS
     let pv = ProgramVector::instance();
     // Heap must be initialised before any heap allocations are attempted
-    HEAP.init(pv.memory_segments());
+    {
+        let mut talc = ALLOCATOR.lock();
+        pv.memory_segments().iter().for_each(|seg| unsafe {
+            let _ = talc.claim(seg.into());
+        });
+    }
 
     let audio_settings = pv.audio_settings();
     match audio_settings.format {
@@ -34,8 +40,6 @@ where
     F: Sample<BaseType = i32> + From<f32> + 'static,
     f32: From<F>,
 {
-    let free_mem_start = HEAP.free_heap_size();
-
     // allocate a working buffer (uses vec intenally)
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
@@ -57,7 +61,7 @@ where
         midi.send(message);
     });
 
-    meta.set_heap_bytes_used(free_mem_start - HEAP.free_heap_size());
+    meta.set_heap_bytes_used(ALLOCATOR.lock().get_counters().total_allocated_bytes as usize);
     // Main audio loop
     audio.run(|_input, mut output| {
         for frame in buffer.frames_mut() {
