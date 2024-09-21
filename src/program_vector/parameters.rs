@@ -3,8 +3,8 @@ extern crate alloc;
 use core::{cell::RefCell, ffi::c_char};
 
 use alloc::{boxed::Box, ffi::CString};
-use critical_section::Mutex;
 use num::FromPrimitive;
+use spin::Mutex;
 
 pub use crate::ffi::openware_midi_control::{PatchButtonId, PatchParameterId};
 
@@ -58,7 +58,7 @@ impl<'a> Parameters<'a> {
         &self,
         callback: impl FnMut(PatchButtonId, u16, u16) + Send + 'static,
     ) {
-        critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, Some(Box::new(callback))));
+        BUTTON_CALLBACK.lock().replace(Some(Box::new(callback)));
     }
 
     pub fn set_button(&self, bid: PatchButtonId, state: bool) {
@@ -77,9 +77,9 @@ static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u
     Mutex::new(RefCell::new(None));
 
 pub extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
-    let mut cb = critical_section::with(|cs| BUTTON_CALLBACK.take(cs));
+    let mut cb = BUTTON_CALLBACK.lock().take();
     if let Some(ref mut callback) = cb {
         callback(PatchButtonId::from_u8(bid).unwrap(), state, samples);
     }
-    critical_section::with(|cs| BUTTON_CALLBACK.replace(cs, cb));
+    BUTTON_CALLBACK.lock().replace(cb);
 }

@@ -3,7 +3,7 @@ extern crate alloc;
 use core::cell::RefCell;
 
 use alloc::boxed::Box;
-use critical_section::Mutex;
+use spin::Mutex;
 
 use crate::midi_message::MidiMessage;
 
@@ -17,7 +17,10 @@ impl Midi {
     }
 
     pub fn on_receive(&self, callback: impl FnMut(MidiMessage) + Send + 'static) {
-        critical_section::with(|cs| MIDI_CALLBACK.replace(cs, Some(Box::new(callback))));
+        MIDI_CALLBACK
+            .lock()
+            .borrow_mut()
+            .replace(Box::new(callback));
     }
 
     pub fn send(&self, message: MidiMessage) {
@@ -32,9 +35,9 @@ static MIDI_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(MidiMessage) + Send>>>>
     Mutex::new(RefCell::new(None));
 
 pub extern "C" fn midi_callback(port: u8, status: u8, d1: u8, d2: u8) {
-    let mut cb = critical_section::with(|cs| MIDI_CALLBACK.take(cs));
+    let mut cb = MIDI_CALLBACK.lock().take();
     if let Some(ref mut callback) = cb {
         callback(MidiMessage::new(port, status, d1, d2));
     }
-    critical_section::with(|cs| MIDI_CALLBACK.replace(cs, cb));
+    MIDI_CALLBACK.lock().replace(cb);
 }
