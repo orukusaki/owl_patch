@@ -41,7 +41,6 @@ where
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
-    pv.register_patch("FunDsp Example", 2, 2);
     let (mut audio, parameters, _, mut meta) = pv.split();
 
     // Set up FunDsp objects
