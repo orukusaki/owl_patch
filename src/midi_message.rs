@@ -24,11 +24,12 @@ const CHANNEL_PRESSURE: u8 = ffi::CHANNEL_PRESSURE as u8;
 const POLY_KEY_PRESSURE: u8 = ffi::POLY_KEY_PRESSURE as u8;
 const PITCH_BEND_CHANGE: u8 = ffi::PITCH_BEND_CHANGE as u8;
 
+/// Simple midi message implementation, ported directly from <https://github.com/RebelTechnology/OwlProgram/blob/develop/LibSource/MidiMessage.h>
 pub struct MidiMessage {
-    pub port: u8,
-    pub d0: u8,
-    pub d1: u8,
-    pub d2: u8,
+    port: u8,
+    d0: u8,
+    d1: u8,
+    d2: u8,
 }
 
 impl MidiMessage {
@@ -36,6 +37,7 @@ impl MidiMessage {
         Self { port, d0, d1, d2 }
     }
 
+    /// Create a new Control Change message
     pub fn cc(ch: u8, cc: u8, value: u8) -> Self {
         Self::new(
             USB_COMMAND_CONTROL_CHANGE,
@@ -45,6 +47,7 @@ impl MidiMessage {
         )
     }
 
+    /// Create a new Program Change message
     pub fn pc(ch: u8, pc: u8) -> Self {
         Self::new(
             USB_COMMAND_PROGRAM_CHANGE,
@@ -54,6 +57,7 @@ impl MidiMessage {
         )
     }
 
+    /// Create a new Pitch Bend message
     pub fn pb(ch: u8, mut bend: u16) -> Self {
         bend += 8192;
         Self::new(
@@ -64,6 +68,7 @@ impl MidiMessage {
         )
     }
 
+    /// Create a new Channel Pressure message
     pub fn cp(ch: u8, value: u8) -> Self {
         Self::new(
             USB_COMMAND_CHANNEL_PRESSURE,
@@ -73,6 +78,7 @@ impl MidiMessage {
         )
     }
 
+    /// Create a new Note On message
     pub fn note_on(ch: u8, note: u8, velocity: u8) -> Self {
         Self::new(
             USB_COMMAND_NOTE_ON,
@@ -82,6 +88,7 @@ impl MidiMessage {
         )
     }
 
+    /// Create a new Note Off message
     pub fn note_off(ch: u8, note: u8) -> Self {
         Self::new(USB_COMMAND_NOTE_OFF, NOTE_OFF | (ch & 0xf), note & 0x7f, 0)
     }
@@ -192,5 +199,9 @@ impl MidiMessage {
 
     pub fn is_pitch_bend(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK) == PITCH_BEND_CHANGE
+    }
+
+    pub fn as_bytes(self) -> [u8; 4] {
+        [self.port, self.d0, self.d1, self.d2]
     }
 }
