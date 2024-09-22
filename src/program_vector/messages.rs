@@ -5,16 +5,16 @@ use core::{
 
 use spin::Mutex;
 
-pub struct Messages {
-    message: &'static mut *mut c_char,
+pub struct Messages<'a> {
+    message: &'a mut *mut c_char,
     buffer: [u8; 64],
 }
 
-unsafe impl Send for Messages {}
+unsafe impl<'a> Send for Messages<'a> {}
 
 static INSTANCE: Mutex<RefCell<Option<Messages>>> = Mutex::new(RefCell::new(None));
 
-impl Messages {
+impl Messages<'static> {
     pub fn init(message: &'static mut *mut c_char) {
         INSTANCE.lock().replace(Some(Self {
             message,
