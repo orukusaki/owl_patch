@@ -82,6 +82,14 @@ impl ProgramVector<'static> {
             panic!("program vector checksum error");
         }
 
+        #[cfg(feature = "talc")]
+        {
+            let mut talc = talc_heap::ALLOCATOR.lock();
+            instance.memory_segments().iter().for_each(|seg| unsafe {
+                let _ = talc.claim(seg.into());
+            });
+        }
+
         instance.register_patch(env!("PATCHNAME"), 2, 2);
 
         instance
@@ -261,8 +269,25 @@ impl<'a> ProgramVector<'a> {
 }
 
 #[cfg(feature = "talc")]
-impl From<&MemorySegment> for talc::Span {
-    fn from(segment: &MemorySegment) -> talc::Span {
-        talc::Span::from_base_size(segment.location, segment.size as usize)
+mod talc_heap {
+    use talc::*;
+
+    use crate::ffi::program_vector::MemorySegment;
+
+    impl From<&MemorySegment> for talc::Span {
+        fn from(segment: &MemorySegment) -> talc::Span {
+            talc::Span::from_base_size(segment.location, segment.size as usize)
+        }
     }
+
+    #[global_allocator]
+    pub static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
+}
+
+#[cfg(feature = "talc")]
+pub fn heap_bytes_used() -> usize {
+    talc_heap::ALLOCATOR
+        .lock()
+        .get_counters()
+        .total_allocated_bytes as usize
 }
