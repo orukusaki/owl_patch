@@ -5,14 +5,22 @@ use core::cell::RefCell;
 use alloc::boxed::Box;
 use spin::Mutex;
 
-use crate::midi_message::MidiMessage;
+use crate::{ffi::service_call::SYSTEM_FUNCTION_MIDI, midi_message::MidiMessage};
+
+use super::ServiceCall;
 
 #[derive(Clone, Copy)]
 pub struct Midi {
     send_callback: Option<extern "C" fn(u8, u8, u8, u8)>,
 }
 impl Midi {
-    pub(crate) fn new(send_callback: Option<extern "C" fn(u8, u8, u8, u8)>) -> Self {
+    pub(crate) fn new(service_call: &mut ServiceCall) -> Self {
+        // # Safety
+        // We receve a raw function pointer, and hope that it relates to a function
+        // with the expected signature, but have no way to really verify this.
+        let send_callback = unsafe {
+            core::mem::transmute(service_call.request_callback(SYSTEM_FUNCTION_MIDI).ok())
+        };
         Self { send_callback }
     }
 

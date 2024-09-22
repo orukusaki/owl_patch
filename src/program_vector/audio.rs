@@ -6,6 +6,7 @@ use super::{
     AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
 };
 
+#[derive(Clone, Copy)]
 pub struct AudioSettings {
     pub sample_rate: usize,
     pub blocksize: usize,
@@ -13,6 +14,7 @@ pub struct AudioSettings {
     pub format: AudioFormat,
 }
 
+#[derive(Clone, Copy)]
 pub enum AudioFormat {
     Format24B16,
     Format24B32,
