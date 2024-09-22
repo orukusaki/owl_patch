@@ -21,7 +21,7 @@ pub extern "C" fn main() -> ! {
     }
 }
 
-fn run<F>(pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
+fn run<F>(mut pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
 where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
@@ -29,9 +29,7 @@ where
     let mut buffer: Buffer<f32, Channels> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
-    // Split up the PV into separate resources - saves us from needing to hold multiple references to it.
-    // pv is consumed here, so all setup stuff must be done first
-    let (mut audio, parameters, _, mut meta) = pv.split();
+    let parameters = pv.parameters;
 
     // Register an input param
     parameters.register(PatchParameterId::PARAMETER_A, "volume");
@@ -49,10 +47,10 @@ where
     // let _button_state = parameters.get_button(PatchButtonId::BUTTON_2);
 
     // For correct reporting, this should be called after all heap allocations are done with.
-    meta.set_heap_bytes_used(heap_bytes_used());
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
 
     // Main audio loop
-    audio.run(|input, mut output| {
+    pv.audio().run(|input, mut output| {
         let volume = parameters.get(PatchParameterId::PARAMETER_A);
         parameters.set(PatchParameterId::PARAMETER_F, volume);
 

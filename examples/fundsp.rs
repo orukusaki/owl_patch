@@ -24,7 +24,7 @@ pub extern "C" fn main() -> ! {
     }
 }
 
-fn run<F>(pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
+fn run<F>(mut pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
 where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
@@ -32,8 +32,6 @@ where
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
-
-    let (mut audio, parameters, _, mut meta) = pv.split();
 
     // Set up FunDsp objects
     let lp_centre = shared(10000.0);
@@ -49,14 +47,15 @@ where
     unit.set_sample_rate(audio_settings.sample_rate as f64);
 
     // Set up input parameters
+    let parameters = pv.parameters;
     parameters.register(PatchParameterId::PARAMETER_A, "Center");
     parameters.register(PatchParameterId::PARAMETER_B, "Res");
     parameters.register(PatchParameterId::PARAMETER_C, "Split");
 
     // For correct reporting, this should be called after all heap allocations are done with.
-    meta.set_heap_bytes_used(heap_bytes_used());
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
 
-    audio.run(|input, mut output| {
+    pv.audio().run(|input, mut output| {
         let param_a = parameters.get(PatchParameterId::PARAMETER_A);
         let centre = param_a * param_a * 20000.0;
         let res = 0.3 + (parameters.get(PatchParameterId::PARAMETER_B) * 30.0);
