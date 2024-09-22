@@ -3,25 +3,16 @@
 extern crate alloc;
 
 use owl_patch::{
-    program_vector::{AudioFormat, AudioSettings, PatchButtonId, PatchParameterId, ProgramVector},
+    program_vector::{
+        heap_bytes_used, AudioFormat, AudioSettings, PatchButtonId, PatchParameterId, ProgramVector,
+    },
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo, Sample, Samplei32, Samplew16},
 };
-use talc::*;
-
-#[global_allocator]
-static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
     // The ProgramVector lets us talk to the OS
     let pv = ProgramVector::instance();
-    // Heap must be initialised before any heap allocations are attempted
-    {
-        let mut talc = ALLOCATOR.lock();
-        pv.memory_segments().iter().for_each(|seg| unsafe {
-            let _ = talc.claim(seg.into());
-        });
-    }
 
     let audio_settings = pv.audio_settings();
     match audio_settings.format {
@@ -30,7 +21,7 @@ pub extern "C" fn main() -> ! {
     }
 }
 
-fn run<F>(mut pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
+fn run<F>(pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
 where
     F: Sample<BaseType = i32> + From<f32>,
     f32: From<F>,
@@ -57,7 +48,8 @@ where
     // using the callback is not essential. If your timing requirements aren't exact, you can just query the button state instead:
     // let _button_state = parameters.get_button(PatchButtonId::BUTTON_2);
 
-    meta.set_heap_bytes_used(ALLOCATOR.lock().get_counters().total_allocated_bytes as usize);
+    // For correct reporting, this should be called after all heap allocations are done with.
+    meta.set_heap_bytes_used(heap_bytes_used());
 
     // Main audio loop
     audio.run(|input, mut output| {
