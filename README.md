@@ -10,8 +10,8 @@ This repo contains all the foundational pieces needed to start creating patches:
 * Midi send / receive
 * Linker magic needed to create a runnable patch binary
 
-> [!NOTE]
-> I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
+### Note
+I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
 
 ## Getting Started
 
@@ -19,7 +19,7 @@ This repo contains all the foundational pieces needed to start creating patches:
 ```bash
 rustup target add thumbv7em-none-eabihf
 ```
-2. Install `gcc-arm-none-eabi` and [FirmwareSender](https://github.com/pingdynasty/FirmwareSender/releases). See the instructions on https://github.com/RebelTechnology/OwlProgram for details.
+2. Install `gcc-arm-none-eabi` and [FirmwareSender](<https://github.com/pingdynasty/FirmwareSender/releases>). See the instructions on https://github.com/RebelTechnology/OwlProgram for details.
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
 [dependencies]

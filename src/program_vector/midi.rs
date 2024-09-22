@@ -25,7 +25,8 @@ impl Midi {
 
     pub fn send(&self, message: MidiMessage) {
         if let Some(f) = self.send_callback {
-            f(message.port, message.d0, message.d1, message.d2)
+            let bytes = message.as_bytes();
+            f(bytes[0], bytes[1], bytes[2], bytes[3])
         }
     }
 }
