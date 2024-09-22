@@ -75,12 +75,14 @@ impl ProgramVector<'static> {
 
         // Safety: Our atomic flag means a 2nd call to this function will error
         let pv = unsafe { PROGRAM_VECTOR.assume_init_mut() };
-        let instance = Self { pv };
+        let mut instance = Self { pv };
 
         // if the checksum is valid, then the vector was initislised
         if instance.pv.checksum < PROGRAM_VECTOR_CHECKSUM_V11 {
             panic!("program vector checksum error");
         }
+
+        instance.register_patch(env!("PATCHNAME"), 2, 2);
 
         instance
     }

@@ -38,8 +38,7 @@ where
     // allocate a working buffer (uses vec intenally)
     let mut buffer: Buffer<f32, Channels> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
-    // Let the OS know we're ready to start processing audio - the channel count is ignored
-    pv.register_patch("Mimimal Rust Patch", 2, 2);
+
     // Split up the PV into separate resources - saves us from needing to hold multiple references to it.
     // pv is consumed here, so all setup stuff must be done first
     let (mut audio, _, _, mut meta) = pv.split();

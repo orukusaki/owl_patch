@@ -38,8 +38,6 @@ where
     let mut buffer: Buffer<f32, Channels> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
-    pv.register_patch("Parameter Test", 2, 2);
-
     // Split up the PV into separate resources - saves us from needing to hold multiple references to it.
     // pv is consumed here, so all setup stuff must be done first
     let (mut audio, parameters, _, mut meta) = pv.split();

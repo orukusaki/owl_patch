@@ -43,7 +43,6 @@ where
     // allocate a working buffer (uses vec intenally)
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
-    pv.register_patch("Midi Test", 2, 2);
 
     let (mut audio, _, midi, mut meta) = pv.split::<F>();
 

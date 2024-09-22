@@ -73,6 +73,8 @@ fn compile_c_lib(cpp_source: &Path, out_path: &Path) {
         .expect("failed to copy startup.s");
 
     let progname = env::var("PATCHNAME").unwrap_or("Rust Patch".to_string());
+
+    println!("cargo::rustc-env=PATCHNAME={}", &progname);
     println!("cargo::rerun-if-env-changed=PATCHNAME");
 
     let mut progname_file = File::create(out_path.join("progname.s")).unwrap();
