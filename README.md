@@ -1,17 +1,8 @@
 # Owl Patch
 Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
 
-## About
-This repo contains all the foundational pieces needed to start creating patches:
-* Communication with the Host OS Firmware (via the ProgramVector)
-* Heap memory allocator
-* Access to audio io buffers, plus a basic in-memory buffer implementation
-* Access to input and output parameters & buttons
-* Midi send / receive
-* Linker magic needed to create a runnable patch binary
-
 ### Note
-I am in no way affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
+The authors of this repository are not affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
 
 ## Getting Started
 
@@ -33,13 +24,13 @@ codegen-units = 1
 debug = 2
 debug-assertions = false
 incremental = false
-lto = "thin"
-opt-level = "s"
+lto = "fat"
+opt-level = "3"
 overflow-checks = false
 
 [profile.release.package."*"]
 strip = "debuginfo"
-opt-level = "s"
+opt-level = "3"
 ```
 4. Create a `.cargo/config.toml` file:
 ```toml
@@ -73,15 +64,6 @@ arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch
 ```
 9. Use `FirmwareSender` to upload the patch to your device.
 
-## Running the Examples
-
-1. As above, make sure you have `gcc-arm-none-eabi`, `FirmwareSender` and the `thumbv7em-none-eabihf` Rust target installed
-2. Check out this repo
-3. Run with
-```
-cargo run --release --example mimimal
-```
-
 ## Supported devices
 The examples in this repo have only been tested on a Befaco Lich using an Owl2 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
 
@@ -93,6 +75,7 @@ Experimental. Will probabably always be that way.
 - Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
 - Load resource files with OWL_SERVICE_LOAD_RESOURCE service call
 - Add example using `cmsis_dsp`
+- Add support for display devices
 
 ### Maybe pile:
 
