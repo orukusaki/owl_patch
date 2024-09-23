@@ -63,10 +63,7 @@ pub struct ProgramVector<'a> {
     pub parameters: Parameters<'a>,
     pub midi: Midi,
     pub meta: Meta<'a>,
-    audio_settings: AudioSettings,
-    audio_input: &'a *mut i32,
-    audio_output: &'a *mut i32,
-    program_ready: Option<unsafe extern "C" fn()>,
+    pub audio: AudioBuffers<'a>,
 }
 
 impl ProgramVector<'static> {
@@ -135,30 +132,19 @@ impl ProgramVector<'static> {
             unsafe { register_patch(c_name.as_ptr(), 2, 2) };
         }
 
+        let audio = AudioBuffers::new(
+            &pv.audio_input,
+            &pv.audio_output,
+            audio_settings,
+            pv.programReady,
+        );
+
         Self {
             parameters,
             midi,
             meta,
-            audio_settings,
-            audio_input: &pv.audio_input,
-            audio_output: &pv.audio_output,
-            program_ready: pv.programReady,
+            audio,
         }
-    }
-
-    pub fn audio_settings(&self) -> AudioSettings {
-        self.audio_settings
-    }
-}
-
-impl<'a> ProgramVector<'a> {
-    pub fn audio(&self) -> AudioBuffers<'a> {
-        AudioBuffers::new(
-            &self.audio_input,
-            &self.audio_output,
-            self.audio_settings,
-            self.program_ready,
-        )
     }
 }
 
