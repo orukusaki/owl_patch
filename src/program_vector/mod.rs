@@ -2,7 +2,6 @@ extern crate alloc;
 
 use crate::ffi::program_vector as ffi;
 use crate::ffi::service_call::SYSTEM_FUNCTION_MIDI;
-use crate::sample_buffer::Sample;
 
 use alloc::ffi::CString;
 pub use ffi::ProgramVector as FfiProgramVector;
@@ -153,11 +152,7 @@ impl ProgramVector<'static> {
 }
 
 impl<'a> ProgramVector<'a> {
-    pub fn audio<F>(&self) -> AudioBuffers<'a, F>
-    where
-        F: Sample<BaseType = i32> + From<f32>,
-        f32: From<F>,
-    {
+    pub fn audio(&self) -> AudioBuffers<'a> {
         AudioBuffers::new(
             &self.audio_input,
             &self.audio_output,

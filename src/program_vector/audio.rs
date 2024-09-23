@@ -1,4 +1,4 @@
-use core::{marker::PhantomData, slice};
+use core::slice;
 
 use crate::sample_buffer::{BufferMut, BufferRef, Interleaved, Sample};
 
@@ -37,15 +37,14 @@ impl AudioFormat {
     }
 }
 
-pub struct AudioBuffers<'a, F: Sample<BaseType = i32>> {
+pub struct AudioBuffers<'a> {
     input: &'a *mut i32,
     output: &'a *mut i32,
     settings: AudioSettings,
-    _format: PhantomData<F>,
     program_ready: Option<unsafe extern "C" fn()>,
 }
 
-impl<'a, F: Sample<BaseType = i32>> AudioBuffers<'a, F> {
+impl<'a> AudioBuffers<'a> {
     pub fn new(
         input: &'a *mut i32,
         output: &'a *mut i32,
@@ -56,12 +55,11 @@ impl<'a, F: Sample<BaseType = i32>> AudioBuffers<'a, F> {
             input,
             output,
             settings,
-            _format: PhantomData,
             program_ready,
         }
     }
 
-    pub fn run(
+    pub fn run<F: Sample<BaseType = i32>>(
         &mut self,
         mut f: impl FnMut(BufferRef<F, Interleaved>, BufferMut<F, Interleaved>),
     ) -> ! {
