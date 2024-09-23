@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use core::cell::RefCell;
+use core::{cell::RefCell, option::Option, ptr::NonNull};
 
 use alloc::boxed::Box;
 use spin::Mutex;
@@ -19,7 +19,9 @@ impl Midi {
         // We receve a raw function pointer, and hope that it relates to a function
         // with the expected signature, but have no way to really verify this.
         let send_callback = unsafe {
-            core::mem::transmute(service_call.request_callback(SYSTEM_FUNCTION_MIDI).ok())
+            core::mem::transmute::<Option<NonNull<()>>, Option<extern "C" fn(u8, u8, u8, u8)>>(
+                service_call.request_callback(SYSTEM_FUNCTION_MIDI).ok(),
+            )
         };
         Self { send_callback }
     }

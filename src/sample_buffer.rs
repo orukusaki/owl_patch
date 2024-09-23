@@ -2,104 +2,75 @@ extern crate alloc;
 
 use core::{
     marker::PhantomData,
-    ops::{Deref, DerefMut},
     slice::{Chunks, ChunksMut},
 };
 
 use alloc::{boxed::Box, vec::Vec};
 
-pub trait Sample: Copy + Default {
-    type BaseType;
-    fn new(value: &Self::BaseType) -> Self;
+pub trait ConvertFrom<T: ?Sized> {
+    fn convert_from(&mut self, other: T);
+}
+
+pub trait ConvertTo<T> {
+    fn convert_to(&self, other: &mut T);
+}
+
+impl<B, T> ConvertTo<T> for B
+where
+    for<'a> T: ConvertFrom<&'a B>,
+{
+    fn convert_to(&self, other: &mut T) {
+        other.convert_from(self)
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+#[repr(transparent)]
+pub struct Samplew16(i32);
+
+// The C code for 24B16 reads two 16 bit words and swaps them over to create a 32 bit value. I *think* that the codec is
+// actually operating in 16 bit mode though, so here we're just doing a 16 bit shift instead.
+// The C code for 24B32 does an 8 bit shift, I'm fairly certain it is actually 24 bit.
+
+impl ConvertFrom<i32> for Samplew16 {
+    fn convert_from(&mut self, value: i32) {
+        self.0 = value << 16
+    }
+}
+
+impl ConvertFrom<Samplew16> for i32 {
+    fn convert_from(&mut self, value: Samplew16) {
+        *self = value.0 >> 16;
+    }
 }
 
 #[derive(Clone, Copy, Default)]
 #[repr(transparent)]
 pub struct Samplei32(i32);
-impl Sample for Samplei32 {
-    type BaseType = i32;
-    fn new(value: &Self::BaseType) -> Self {
-        Self(*value)
+
+impl ConvertFrom<i32> for Samplei32 {
+    fn convert_from(&mut self, value: i32) {
+        self.0 = value << 8;
     }
 }
 
-impl Deref for Samplei32 {
-    type Target = i32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl ConvertFrom<Samplei32> for i32 {
+    fn convert_from(&mut self, value: Samplei32) {
+        *self = value.0 >> 8;
     }
 }
 
-impl DerefMut for Samplei32 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+impl ConvertFrom<i32> for f32 {
+    fn convert_from(&mut self, other: i32) {
+        const MUL: f32 = 1.0 / (0x00800000 as f32);
+        *self = other as f32 * MUL
     }
 }
 
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-// Word-swapped
-pub struct Samplew16(i32);
-impl Sample for Samplew16 {
-    type BaseType = i32;
-    fn new(value: &Self::BaseType) -> Self {
-        Self(*value)
-    }
-}
-
-impl Deref for Samplew16 {
-    type Target = i32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Samplew16 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Sample for f32 {
-    type BaseType = f32;
-    fn new(value: &Self::BaseType) -> Self {
-        *value
-    }
-}
-
-impl From<Samplei32> for f32 {
-    fn from(value: Samplei32) -> Self {
-        const MUL: f32 = 1.0 / (0x80000000i64 as f32);
-        (value.0 << 8) as f32 * MUL
-    }
-}
-
-impl From<f32> for Samplei32 {
-    fn from(value: f32) -> Self {
-        const MUL: f32 = 0x00800000i64 as f32;
-        Samplei32((value * MUL) as i32)
-    }
-}
-
-impl From<Samplew16> for f32 {
-    fn from(value: Samplew16) -> Self {
-        const MUL: f32 = 1.0 / (0x80000000i64 as f32);
-
-        let bytes = value.0.to_le_bytes();
-        let qint: i32 = i32::from_le_bytes([bytes[2], bytes[3], bytes[0], bytes[1]]);
-        qint as f32 * MUL
-    }
-}
-
-impl From<f32> for Samplew16 {
-    fn from(value: f32) -> Self {
-        const MUL: f32 = 0x00800000i64 as f32;
-
-        let qint = (value * MUL) as i32;
-        let bytes = qint.to_le_bytes();
-        Samplew16(i32::from_le_bytes([bytes[2], bytes[3], bytes[0], bytes[1]]))
+impl ConvertFrom<f32> for i32 {
+    fn convert_from(&mut self, other: f32) {
+        const MUL: f32 = 0x00800000 as f32;
+        *self = (other * MUL) as i32
     }
 }
 
@@ -117,34 +88,14 @@ pub struct Interleaved;
 /// eg: `[l0, r0, l1, r1, l2, r2 ...]`
 impl SampleStorage for Interleaved {}
 
-pub struct Buffer<F: Sample, S: SampleStorage> {
+pub struct Buffer<F, S: SampleStorage> {
     storage: Box<[F]>,
     channels: usize,
     blocksize: usize,
     _storage: PhantomData<S>,
 }
 
-impl<F: Sample, S: SampleStorage> Buffer<F, S> {
-    pub fn as_ref(&self) -> BufferRef<'_, F, S> {
-        BufferRef {
-            storage: &self.storage,
-            channels: self.channels,
-            blocksize: self.blocksize,
-            _storage: PhantomData,
-        }
-    }
-
-    pub fn as_mut(&mut self) -> BufferMut<'_, F, S> {
-        BufferMut {
-            storage: &mut self.storage,
-            channels: self.channels,
-            blocksize: self.blocksize,
-            _storage: PhantomData,
-        }
-    }
-}
-
-impl<F: Sample, S: SampleStorage> Buffer<F, S> {
+impl<F: Default + Clone, S: SampleStorage> Buffer<F, S> {
     pub fn new(channels: usize, blocksize: usize) -> Buffer<F, S> {
         let len = channels * blocksize;
         let mut storage = Vec::with_capacity(len);
@@ -160,141 +111,71 @@ impl<F: Sample, S: SampleStorage> Buffer<F, S> {
     }
 }
 
-impl<F: Sample> Buffer<F, Channels> {
+impl<F> Buffer<F, Channels> {
     pub fn channels(&self) -> Chunks<'_, F> {
         self.storage.chunks(self.blocksize)
     }
 }
 
-impl<F: Sample> Buffer<F, Interleaved> {
+impl<F> Buffer<F, Interleaved> {
     pub fn frames(&self) -> Chunks<'_, F> {
         self.storage.chunks(self.channels)
     }
 }
 
-impl<F: Sample> Buffer<F, Channels> {
+impl<F> Buffer<F, Channels> {
     pub fn channels_mut(&mut self) -> ChunksMut<'_, F> {
         self.storage.chunks_mut(self.blocksize)
     }
 }
 
-impl<F: Sample> Buffer<F, Interleaved> {
+impl<F> Buffer<F, Interleaved> {
     pub fn frames_mut(&mut self) -> ChunksMut<'_, F> {
         self.storage.chunks_mut(self.channels)
     }
 }
 
-pub struct BufferRef<'a, F: Sample, S: SampleStorage> {
-    storage: &'a [F],
-    channels: usize,
-    blocksize: usize,
-    _storage: PhantomData<S>,
-}
-
-impl<'a, F: Sample> BufferRef<'a, F, Interleaved> {
-    pub fn new(storage: &'a [F], channels: usize, blocksize: usize) -> Self {
-        assert_eq!(storage.len(), channels * blocksize);
-        Self::new_unchecked(storage, channels, blocksize)
-    }
-    fn new_unchecked(storage: &'a [F], channels: usize, blocksize: usize) -> Self {
-        Self {
-            storage,
-            channels,
-            blocksize,
-            _storage: PhantomData,
-        }
-    }
-}
-
-impl<'a, F: Sample> BufferRef<'a, F, Channels> {
-    pub fn iter(&self) -> Chunks<'_, F> {
-        self.storage.chunks(self.blocksize)
-    }
-}
-
-impl<'a, F: Sample> BufferRef<'a, F, Interleaved> {
-    pub fn iter(&self) -> Chunks<'_, F> {
-        self.storage.chunks(self.channels)
-    }
-}
-
-pub struct BufferMut<'a, F: Sample, S: SampleStorage>
+// Converting from a slice of data
+impl<F1: ConvertFrom<F2>, F2: Copy, S> ConvertFrom<&[F2]> for Buffer<F1, S>
 where
-    F: 'a,
+    S: SampleStorage,
 {
-    storage: &'a mut [F],
-    channels: usize,
-    blocksize: usize,
-    _storage: PhantomData<S>,
-}
-
-impl<'a, F: Sample> BufferMut<'a, F, Interleaved> {
-    pub fn new(storage: &'a mut [F], channels: usize, blocksize: usize) -> Self {
-        assert_eq!(storage.len(), channels * blocksize);
-        Self::new_unchecked(storage, channels, blocksize)
-    }
-
-    fn new_unchecked(storage: &'a mut [F], channels: usize, blocksize: usize) -> Self {
-        Self {
-            storage,
-            channels,
-            blocksize,
-            _storage: PhantomData,
+    fn convert_from(&mut self, other: &[F2]) {
+        assert_eq!(self.storage.len(), other.len());
+        for (o, i) in self.storage.iter_mut().zip(other.iter()) {
+            o.convert_from(*i);
         }
-    }
-}
-
-impl<'a, F: Sample> BufferMut<'a, F, Channels> {
-    pub fn iter_mut(&mut self) -> ChunksMut<'_, F> {
-        self.storage.chunks_mut(self.blocksize)
-    }
-}
-
-impl<'a, F: Sample> BufferMut<'a, F, Interleaved> {
-    pub fn iter_mut(&mut self) -> ChunksMut<'_, F> {
-        self.storage.chunks_mut(self.channels)
-    }
-}
-
-pub trait ConvertFrom<T> {
-    fn convert_from(&mut self, other: &T);
-}
-
-pub trait ConvertTo<T> {
-    fn convert_to(&self, other: &mut T);
-}
-
-impl<B, T> ConvertTo<T> for B
-where
-    T: ConvertFrom<B>,
-{
-    fn convert_to(&self, other: &mut T) {
-        other.convert_from(self)
     }
 }
 
 // Converting from same storage type just means running the sample convertion for every sample
-impl<'a, F1, F2, S> ConvertFrom<BufferRef<'_, F2, S>> for BufferMut<'a, F1, S>
+impl<F1: ConvertFrom<F2>, F2: Copy, S> ConvertFrom<&Buffer<F2, S>> for Buffer<F1, S>
 where
-    F1: Sample + From<F2>,
-    F2: Sample,
     S: SampleStorage,
 {
-    fn convert_from(&mut self, other: &BufferRef<F2, S>) {
-        assert_eq!(self.storage.len(), other.storage.len());
-        for (o, i) in self.storage.iter_mut().zip(other.storage.iter()) {
-            *o = (*i).into()
+    fn convert_from(&mut self, other: &Buffer<F2, S>) {
+        self.convert_from(other.storage.as_ref());
+    }
+}
+
+// Converting to a slice of data
+impl<F1: ConvertFrom<F2>, F2: Copy, S> ConvertFrom<&Buffer<F2, S>> for &mut [F1]
+where
+    S: SampleStorage,
+{
+    fn convert_from(&mut self, other: &Buffer<F2, S>) {
+        assert_eq!(self.len(), other.storage.len());
+        for (o, i) in self.iter_mut().zip(other.storage.iter()) {
+            o.convert_from(*i);
         }
     }
 }
 
 // Channels -> Interleaved
-impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Channels>>
-    for BufferMut<'a, F, Interleaved>
-{
-    fn convert_from(&mut self, other: &BufferRef<F2, Channels>) {
+impl<F1: ConvertFrom<F2>, F2: Copy> ConvertFrom<&Buffer<F2, Channels>> for Buffer<F1, Interleaved> {
+    fn convert_from(&mut self, other: &Buffer<F2, Channels>) {
         assert_eq!(self.channels, other.channels);
-        for (n, ch) in other.iter().enumerate() {
+        for (n, ch) in other.channels().enumerate() {
             let it = self
                 .storage
                 .iter_mut()
@@ -303,19 +184,17 @@ impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Channel
                 .zip(ch.iter());
 
             for (s, os) in it {
-                *s = (*os).into();
+                s.convert_from(*os);
             }
         }
     }
 }
 
 // Interleaved -> Channels
-impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Interleaved>>
-    for BufferMut<'a, F, Channels>
-{
-    fn convert_from(&mut self, other: &BufferRef<F2, Interleaved>) {
+impl<F1: ConvertFrom<F2>, F2: Copy> ConvertFrom<&Buffer<F2, Interleaved>> for Buffer<F1, Channels> {
+    fn convert_from(&mut self, other: &Buffer<F2, Interleaved>) {
         assert_eq!(self.channels, other.channels);
-        for (n, ch) in self.iter_mut().enumerate() {
+        for (n, ch) in self.channels_mut().enumerate() {
             let it = other
                 .storage
                 .iter()
@@ -324,34 +203,8 @@ impl<'a, F: Sample + From<F2>, F2: Sample> ConvertFrom<BufferRef<'_, F2, Interle
                 .zip(ch.iter_mut());
 
             for (os, s) in it {
-                *s = (*os).into();
+                s.convert_from(*os);
             }
         }
-    }
-}
-
-// A Buffer can convert from anything that its BufferMut can convert from
-impl<F, S, T> ConvertFrom<T> for Buffer<F, S>
-where
-    for<'a> BufferMut<'a, F, S>: ConvertFrom<T>,
-    S: SampleStorage,
-    F: Sample,
-{
-    fn convert_from(&mut self, other: &T) {
-        self.as_mut().convert_from(other)
-    }
-}
-
-// A BufferMut can convert from a Buffer if it can already convert from its BufferRef
-impl<'a, F1, S1, F2, S2> ConvertFrom<Buffer<F1, S1>> for BufferMut<'a, F2, S2>
-where
-    for<'b> BufferRef<'b, F1, S1>: ConvertTo<BufferMut<'a, F2, S2>>,
-    S1: SampleStorage,
-    F1: Sample,
-    S2: SampleStorage,
-    F2: Sample,
-{
-    fn convert_from(&mut self, other: &Buffer<F1, S1>) {
-        other.as_ref().convert_to(self);
     }
 }
