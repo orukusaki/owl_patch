@@ -1,6 +1,6 @@
 use core::slice;
 
-use crate::{ffi::program_vector::MemorySegment, program_vector::PROGRAM_VECTOR_CHECKSUM_V13};
+use crate::ffi::program_vector::MemorySegment;
 
 pub struct Meta<'a> {
     cycles_per_block: &'a u32,
@@ -49,10 +49,6 @@ impl<'a> Meta<'a> {
 
     pub fn memory_segments(&self) -> &[MemorySegment] {
         const MAX: usize = 5;
-
-        if *self.checksum < PROGRAM_VECTOR_CHECKSUM_V13 {
-            panic!("bad checksum");
-        }
 
         let count = (0..MAX)
             .take_while(|i| {
