@@ -4,10 +4,8 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use owl_patch::{
-    program_vector::{
-        heap_bytes_used, AudioFormat, AudioSettings, PatchParameterId, ProgramVector,
-    },
-    sample_buffer::{Buffer, ConvertFrom, ConvertTo, Interleaved, Sample, Samplei32, Samplew16},
+    program_vector::{heap_bytes_used, PatchParameterId, ProgramVector},
+    sample_buffer::{Buffer, ConvertFrom, ConvertTo, Interleaved},
 };
 
 use fundsp::hacker32::*;
@@ -15,20 +13,10 @@ use fundsp::hacker32::*;
 #[no_mangle]
 pub extern "C" fn main() -> ! {
     // The ProgramVector lets us talk to the OS
-    let pv = ProgramVector::instance();
+    let mut pv = ProgramVector::instance();
 
-    let audio_settings = pv.audio_settings();
-    match audio_settings.format {
-        AudioFormat::Format24B16 => run::<Samplew16>(pv, audio_settings),
-        AudioFormat::Format24B32 => run::<Samplei32>(pv, audio_settings),
-    }
-}
+    let audio_settings = pv.audio.settings;
 
-fn run<F>(mut pv: ProgramVector<'static>, audio_settings: AudioSettings) -> !
-where
-    F: Sample<BaseType = i32> + From<f32>,
-    f32: From<F>,
-{
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
     let mut buffer: Buffer<f32, Interleaved> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
@@ -55,7 +43,7 @@ where
     // For correct reporting, this should be called after all heap allocations are done with.
     pv.meta.set_heap_bytes_used(heap_bytes_used());
 
-    pv.audio().run(|input, mut output| {
+    pv.audio.run(|input, output| {
         let param_a = parameters.get(PatchParameterId::PARAMETER_A);
         let centre = param_a * param_a * 20000.0;
         let res = 0.3 + (parameters.get(PatchParameterId::PARAMETER_B) * 30.0);
@@ -65,12 +53,12 @@ where
         hp_centre.set((centre - split).clamp(20.0, 22000.0));
         q.set(res);
 
-        buffer.convert_from(&input);
+        buffer.convert_from(input);
 
         for samples in buffer.frames_mut() {
             samples.copy_from_slice(unit.tick(Frame::from_slice(samples)).as_slice());
         }
 
-        buffer.convert_to(&mut output);
+        buffer.convert_to(output);
     });
 }
