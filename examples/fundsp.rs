@@ -56,7 +56,9 @@ pub extern "C" fn main() -> ! {
         buffer.convert_from(input);
 
         for samples in buffer.frames_mut() {
-            samples.copy_from_slice(unit.tick(Frame::from_slice(samples)).as_slice());
+            let slice = &mut samples[0..2];
+            let frame = Frame::from_slice(slice);
+            slice.copy_from_slice(unit.tick(frame).as_slice());
         }
 
         buffer.convert_to(output);
