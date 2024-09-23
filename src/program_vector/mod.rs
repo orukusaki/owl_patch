@@ -1,10 +1,16 @@
 extern crate alloc;
 
+use core::{
+    ffi::CStr,
+    mem::MaybeUninit,
+    slice,
+    sync::atomic::{AtomicBool, Ordering},
+};
+
 use crate::ffi::program_vector as ffi;
 use crate::ffi::service_call::SYSTEM_FUNCTION_MIDI;
 
-use alloc::ffi::CString;
-pub use ffi::ProgramVector as FfiProgramVector;
+use ffi::ProgramVector as FfiProgramVector;
 
 mod audio;
 pub use audio::{AudioBuffers, AudioFormat, AudioSettings};
@@ -18,12 +24,12 @@ mod messages;
 pub use messages::debug_message;
 use messages::Messages;
 
-pub mod midi;
+mod midi;
 
-pub mod meta;
+mod meta;
 pub use meta::Meta;
 
-pub mod service_call;
+mod service_call;
 pub use service_call::ServiceCall;
 
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
@@ -42,21 +48,16 @@ pub const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
 pub const AUDIO_FORMAT_FORMAT_MASK: u8 = ffi::AUDIO_FORMAT_FORMAT_MASK as u8;
 pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 
-use core::{
-    mem::MaybeUninit,
-    slice,
-    sync::atomic::{AtomicBool, Ordering},
-};
-
 // The Program Vector is how we communicate with the OS. It is initialised by the OS at runtime.
-// It is designated to the special .pv section, and its address will be written to the program header block
+// It is assigned to the special .pv section, and its address will be written to the program header block
 // in the binary by the linker script
 #[link_section = ".pv"]
 #[used]
 pub(crate) static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
 static TAKEN: AtomicBool = AtomicBool::new(false);
 
-unsafe impl Sync for FfiProgramVector {}
+static PATCH_NAME: &CStr =
+    unsafe { CStr::from_bytes_with_nul_unchecked(concat!(env!("PATCHNAME"), "\0").as_bytes()) };
 
 // Owned wrapper around the static ProgramVector instance
 pub struct ProgramVector<'a> {
@@ -67,18 +68,18 @@ pub struct ProgramVector<'a> {
 }
 
 impl ProgramVector<'static> {
-    pub fn instance() -> Self {
+    pub fn take() -> Self {
         if TAKEN.swap(true, Ordering::Relaxed) {
             panic!("program vector already taken");
         }
 
-        // Safety: Our atomic flag means a 2nd call to this function will error
+        // Safety: Our atomic flag means a 2nd call to this function will error, so there can never
+        // be more than one mut ref to PROGRAM_VECTOR
         let pv = unsafe { PROGRAM_VECTOR.assume_init_mut() };
-        // let mut instance = Self { pv };
 
-        // if the checksum is valid, then the vector was initislised
-        if pv.checksum < PROGRAM_VECTOR_CHECKSUM_V11 {
-            panic!("program vector checksum error");
+        // if the checksum is valid, then the vector was initialised
+        if pv.checksum < PROGRAM_VECTOR_CHECKSUM_V13 {
+            panic!("Program Vector checksum error - is your firmware up to date?");
         }
 
         let meta = Meta::new(
@@ -125,11 +126,7 @@ impl ProgramVector<'static> {
         // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
         // The only thing it really does is display the patch name on devices with a screen
         if let Some(register_patch) = pv.registerPatch {
-            // allocate a CString to ensure we get null termination
-            let c_name = CString::new(env!("PATCHNAME")).expect("failed to create name string");
-            // Safety: c_name does not need to exist after this function call, so it can safely be
-            // dropped at the end of this scope
-            unsafe { register_patch(c_name.as_ptr(), 2, 2) };
+            unsafe { register_patch(PATCH_NAME.as_ptr(), 2, 2) };
         }
 
         let audio = AudioBuffers::new(

@@ -10,7 +10,7 @@ use owl_patch::{
 #[no_mangle]
 pub extern "C" fn main() -> ! {
     // The ProgramVector lets us talk to the OS
-    let mut pv = ProgramVector::instance();
+    let mut pv = ProgramVector::take();
 
     let audio_settings = pv.audio.settings;
     // allocate a working buffer (uses vec intenally)
