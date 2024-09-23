@@ -1,6 +1,5 @@
 #![no_main]
 #![no_std]
-extern crate alloc;
 
 use owl_patch::{
     program_vector::{heap_bytes_used, PatchButtonId, PatchParameterId, ProgramVector},
