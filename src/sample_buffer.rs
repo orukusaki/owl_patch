@@ -34,13 +34,13 @@ pub struct Samplew16(i32);
 
 impl ConvertFrom<i32> for Samplew16 {
     fn convert_from(&mut self, value: i32) {
-        self.0 = value << 16
+        self.0 = value >> 16
     }
 }
 
 impl ConvertFrom<Samplew16> for i32 {
     fn convert_from(&mut self, value: Samplew16) {
-        *self = value.0 >> 16;
+        *self = value.0 << 16;
     }
 }
 
@@ -50,26 +50,26 @@ pub struct Samplei32(i32);
 
 impl ConvertFrom<i32> for Samplei32 {
     fn convert_from(&mut self, value: i32) {
-        self.0 = value << 8;
+        self.0 = value >> 8;
     }
 }
 
 impl ConvertFrom<Samplei32> for i32 {
     fn convert_from(&mut self, value: Samplei32) {
-        *self = value.0 >> 8;
+        *self = value.0 << 8;
     }
 }
 
 impl ConvertFrom<i32> for f32 {
     fn convert_from(&mut self, other: i32) {
-        const MUL: f32 = 1.0 / (0x00800000 as f32);
+        const MUL: f32 = 1.0 / (0x80000000i64 as f32);
         *self = other as f32 * MUL
     }
 }
 
 impl ConvertFrom<f32> for i32 {
     fn convert_from(&mut self, other: f32) {
-        const MUL: f32 = 0x00800000 as f32;
+        const MUL: f32 = 0x80000000i64 as f32;
         *self = (other * MUL) as i32
     }
 }
