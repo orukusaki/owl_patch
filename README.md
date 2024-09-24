@@ -1,5 +1,27 @@
 # Owl Patch
 Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
+```rust
+#![no_main]
+#![no_std]
+
+use owl_patch::{
+    program_vector::{heap_bytes_used, ProgramVector},
+    sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
+};
+
+#[no_mangle]
+pub extern "C" fn main() -> ! {
+    let mut pv = ProgramVector::take();
+    let audio_settings = pv.audio.settings;
+    let mut buffer: Buffer<f32, Channels> = Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.audio.run(|input, output| {
+        buffer.convert_from(input);
+        // Do something clever with the samples in the buffer
+        buffer.convert_to(output);
+    });
+}
+```
 
 ## Getting Started
 
