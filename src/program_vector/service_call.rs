@@ -68,28 +68,31 @@ impl ServiceCall {
         }
     }
 
-    //TODO: return Result
-    pub fn get_array<T>(&mut self, code: &[u8; 4usize]) -> Option<&[T]> {
-        self.service_call.and_then(|service_call| {
-            let mut size: usize = 0;
-            let mut ptr: *mut T = core::ptr::null_mut();
-            let mut args = [
-                code.as_ptr() as *mut _,
-                &mut ptr as *mut *mut T as *mut _,
-                &mut size as *mut usize as *mut _,
-            ];
+    pub fn get_array<T>(&mut self, code: &[u8; 4]) -> Result<&[T], &str> {
+        let service_call = self.service_call.ok_or("service call not available")?;
 
-            let ret = unsafe {
-                service_call(
-                    OWL_SERVICE_GET_ARRAY as i32,
-                    args.as_mut_ptr(),
-                    args.len() as i32,
-                )
-            };
+        let mut size: usize = 0;
+        let mut ptr: *mut T = core::ptr::null_mut();
+        let mut args = [
+            code.as_ptr() as *mut _,
+            &mut ptr as *mut *mut T as *mut _,
+            &mut size as *mut usize as *mut _,
+        ];
 
-            (ret == OWL_SERVICE_OK as i32 && !ptr.is_null())
-                .then(|| unsafe { slice::from_raw_parts(ptr as *const T, size) })
-        })
+        let ret = unsafe {
+            service_call(
+                OWL_SERVICE_GET_ARRAY as i32,
+                args.as_mut_ptr(),
+                args.len() as i32,
+            )
+        };
+
+        if ret == OWL_SERVICE_OK as i32 && !ptr.is_null() {
+            // Safety: Trusting the values returned by the OS
+            Ok(unsafe { slice::from_raw_parts(ptr as *const T, size) })
+        } else {
+            Err("service call returned error")
+        }
     }
 
     pub fn register_draw_callback(

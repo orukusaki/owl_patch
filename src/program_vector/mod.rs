@@ -56,6 +56,7 @@ pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 pub(crate) static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
 static TAKEN: AtomicBool = AtomicBool::new(false);
 
+// Safety: Adding the null byte guarantees a valid Cstr.
 static PATCH_NAME: &CStr =
     unsafe { CStr::from_bytes_with_nul_unchecked(concat!(env!("PATCHNAME"), "\0").as_bytes()) };
 
