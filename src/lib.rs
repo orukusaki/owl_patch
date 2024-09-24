@@ -12,7 +12,7 @@ use ffi::program_vector::ProgramVectorAudioStatus;
 use program_vector::{CONFIGURATION_ERROR_STATUS, PROGRAM_VECTOR};
 
 use core::{
-    ffi::CStr,
+    ffi::c_char,
     panic::PanicInfo,
     sync::atomic::{compiler_fence, Ordering},
 };
@@ -26,14 +26,13 @@ unsafe fn panic_handler(info: &PanicInfo) -> ! {
     buff[..len].copy_from_slice(&message.as_bytes()[..len]);
 
     pv.error = CONFIGURATION_ERROR_STATUS;
-    pv.message = CStr::from_bytes_with_nul_unchecked(&buff).as_ptr() as *mut i8;
+    pv.message = buff.as_mut_ptr() as *mut c_char;
 
     if let Some(program_status) = pv.programStatus {
         // This function never returns
         unsafe {
             program_status(ProgramVectorAudioStatus::AUDIO_ERROR_STATUS);
         }
-        unreachable!();
     }
     loop {
         compiler_fence(Ordering::SeqCst);
