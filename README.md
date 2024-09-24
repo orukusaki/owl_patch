@@ -7,7 +7,9 @@ Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](
 ```bash
 rustup target add thumbv7em-none-eabihf
 ```
+
 2. Install `gcc-arm-none-eabi` and [FirmwareSender](<https://github.com/pingdynasty/FirmwareSender/releases>). See the instructions on https://github.com/RebelTechnology/OwlProgram for details.
+
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
 [dependencies]
@@ -29,6 +31,7 @@ overflow-checks = false
 strip = "debuginfo"
 opt-level = "3"
 ```
+
 4. Create a `.cargo/config.toml` file:
 ```toml
 [build]
@@ -50,19 +53,23 @@ rustflags = [
 #    "-C", "link-arg=-Towl3.ld",
 #]
 ```
+
 5. Copy one of the [examples](examples) into `src/main.rs`
+
 6. Build your patch
 ```bash
 PATCHNAME="Your Patch Name" cargo build --release
 ```
+
 7. Use `arm-none-eabi-objcopy` to get the final binary:
 ```bash
 arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch> target/thumbv7em-none-eabihf/release/<your_patch>.bin
 ```
-9. Use `FirmwareSender` to upload the patch to your device.
+
+8. Use `FirmwareSender` to upload the patch to your device.
 
 ## Supported devices
-The examples in this repo have only been tested on a Befaco Lich using an Owl2 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
+The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
 
 ## Crate Features
 - `talc` (default): Uses the [talc](https://crates.io/crates/talc) crate as the global allocator. If you want to use a different allocator, turn this feature off with `default-features = false`
@@ -75,26 +82,27 @@ Experimental. Will probabably always be that way.
 - Safe API wrapper for the ProgramVector, allowing communication with the host OS
 - Register Patch with host OS
 - Global Allocator using [talc](https://crates.io/crates/talc)
-- Process Audio in i32 and f32 formats
+- Process Audio in `i32` and `f32` formats
 - Simple Audio Buffer implementation, supporting different formats and layouts
-- Register, Get, and Set Patch Parameters, & Button changed callback
-- Midi send / receive
+- Register, get, and set Patch Parameters, with callback for button events
+- Send & Receive Midi messages
 - Debug messages
 
 ### Todo List:
 
-- Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
-- Load resource files with OWL_SERVICE_LOAD_RESOURCE service call
+- Get i/o callibration data using `OWL_SERVICE_GET_PARAMETERS` service call
+- Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
 - Add support for display devices
 - Add example using `cmsis_dsp`
 
 ### Maybe pile:
 
 - Get system log / pow tables
-- FFT init service calls with OWL_SERVICE_ARM_RFFT_FAST_INIT_F32 and OWL_SERVICE_ARM_CFFT_INIT_F32
+- FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 - Additional device support
--- Invert some params for hardware_version == OWL_MODULAR_HARDWARE
--- Support for lower checksum versions
+  - Invert some params for `hardware_version == OWL_MODULAR_HARDWARE`
+  - Support for lower checksum versions
+- Create a Cargo project template
 
 ## License
 

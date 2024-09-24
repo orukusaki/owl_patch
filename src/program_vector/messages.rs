@@ -1,7 +1,4 @@
-use core::{
-    cell::RefCell,
-    ffi::{c_char, CStr},
-};
+use core::{cell::RefCell, ffi::c_char};
 
 use spin::Mutex;
 
@@ -26,7 +23,7 @@ impl Messages<'static> {
         let len = message.len().min(self.buffer.len() - 1);
         self.buffer[..len].copy_from_slice(&message.as_bytes()[..len]);
         self.buffer[len] = 0;
-        *self.message = CStr::from_bytes_until_nul(&self.buffer).unwrap().as_ptr() as *mut i8;
+        *self.message = self.buffer.as_mut_ptr() as *mut c_char
     }
 }
 
