@@ -1,9 +1,6 @@
 # Owl Patch
 Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
 
-### Note
-The authors of this repository are not affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
-
 ## Getting Started
 
 1. Make sure you have the `thumbv7em-none-eabihf` Rust target installed:
@@ -67,21 +64,37 @@ arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch
 ## Supported devices
 The examples in this repo have only been tested on a Befaco Lich using an Owl2 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
 
+## Crate Features
+- `talc` (default): Uses the [talc](https://crates.io/crates/talc) crate as the global allocator. If you want to use a different allocator, turn this feature off with `default-features = false`
+
 ## Project state
 Experimental. Will probabably always be that way.
+
+### Working features:
+- Output correctly linked binary including patch header
+- Safe API wrapper for the ProgramVector, allowing communication with the host OS
+- Register Patch with host OS
+- Global Allocator using [talc](https://crates.io/crates/talc)
+- Process Audio in i32 and f32 formats
+- Simple Audio Buffer implementation, supporting different formats and layouts
+- Register, Get, and Set Patch Parameters, & Button changed callback
+- Midi send / receive
+- Debug messages
 
 ### Todo List:
 
 - Get i/o callibration data using OWL_SERVICE_GET_PARAMETERS service call
 - Load resource files with OWL_SERVICE_LOAD_RESOURCE service call
-- Add example using `cmsis_dsp`
 - Add support for display devices
+- Add example using `cmsis_dsp`
 
 ### Maybe pile:
 
 - Get system log / pow tables
 - FFT init service calls with OWL_SERVICE_ARM_RFFT_FAST_INIT_F32 and OWL_SERVICE_ARM_CFFT_INIT_F32
-- Service version - OWL_SERVICE_VERSION
+- Additional device support
+-- Invert some params for hardware_version == OWL_MODULAR_HARDWARE
+-- Support for lower checksum versions
 
 ## License
 
@@ -91,3 +104,6 @@ or <a href="LICENSE-MIT">MIT license</a> at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this repository by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
+
+### Note
+The authors of this repository are not affiliated with Rebel Technology. The Owl Platform and associated published code is their copyright.
