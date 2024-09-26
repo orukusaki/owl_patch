@@ -10,6 +10,7 @@ pub mod ffi;
 pub mod midi_message;
 pub mod program_vector;
 pub mod sample_buffer;
+pub mod volts_per_octave;
 
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
