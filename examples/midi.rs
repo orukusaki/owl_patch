@@ -23,17 +23,18 @@ pub extern "C" fn main() -> ! {
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     let (mut osc, inc) = Sawtooth::new();
+    let mul = 2.0 / audio_settings.sample_rate as f32;
 
     // Set up our midi handler - it sets the oscillator frequency for any note-on messages, plus echos
     // all messages back to the sender
-    let mul = 2.0 / audio_settings.sample_rate as f32;
-    pv.midi.on_receive(move |message: MidiMessage| {
+    let midi = pv.midi();
+    midi.on_receive(move |message: MidiMessage| {
         if message.is_note_on() {
             let note = message.note();
             let hz = 440.0 * 2.0f32.powf((note as f32 - 69.0) / 12.0);
             inc.store((mul * hz).to_bits(), Ordering::Relaxed);
         }
-        pv.midi.send(message);
+        midi.send(message);
     });
 
     // For correct reporting, this should be called after all heap allocations are done with.

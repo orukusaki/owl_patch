@@ -11,6 +11,12 @@ pub trait ConvertFrom<T: ?Sized> {
     fn convert_from(&mut self, other: T);
 }
 
+impl<T> ConvertFrom<T> for T {
+    fn convert_from(&mut self, value: T) {
+        *self = value
+    }
+}
+
 pub trait ConvertTo<T> {
     fn convert_to(&self, other: &mut T);
 }
