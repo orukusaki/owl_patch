@@ -5,6 +5,8 @@ use ::core::{
 };
 use core::{ptr::NonNull, slice};
 
+use super::OWL_MODULAR_HARDWARE;
+
 const OWL_SERVICE_OK: i32 = ffi::OWL_SERVICE_OK as i32;
 
 #[allow(dead_code)]
@@ -47,9 +49,38 @@ impl SystemFunction {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct DeviceParameters {
+    pub input_offset: f32,
+    pub input_scalar: f32,
+    pub output_offset: f32,
+    pub output_scalar: f32,
+}
+
+impl DeviceParameters {
+    fn default() -> Self {
+        Self {
+            input_scalar: 2.0,
+            input_offset: 0.0,
+            output_scalar: 2.0,
+            output_offset: 0.0,
+        }
+    }
+
+    fn default_owl_modular() -> Self {
+        Self {
+            input_scalar: -4.29,
+            input_offset: -0.06382,
+            output_scalar: -4.642,
+            output_offset: 0.1208,
+        }
+    }
+}
+
 pub struct ServiceCall {
     service_call:
         Option<unsafe extern "C" fn(service: c_int, params: *mut *mut c_void, len: c_int) -> c_int>,
+    hardware_version: u8,
 }
 
 impl ServiceCall {
@@ -57,8 +88,12 @@ impl ServiceCall {
         service_call: Option<
             unsafe extern "C" fn(service: c_int, params: *mut *mut c_void, len: c_int) -> c_int,
         >,
+        hardware_version: u8,
     ) -> Self {
-        Self { service_call }
+        Self {
+            service_call,
+            hardware_version,
+        }
     }
 
     pub fn register_callback(
@@ -94,6 +129,44 @@ impl ServiceCall {
         self.service_call(ServiceCallType::OwlServiceGetArray, &mut args)
             .and_then(|_| NonNull::new(ptr).ok_or("array not found"))
             .map(|ptr| unsafe { slice::from_raw_parts(ptr.as_ptr(), size) })
+    }
+
+    pub fn device_parameters(&mut self) -> DeviceParameters {
+        const IN_OFFSET: &[u8; 3usize] = b"IO\0";
+        const IN_SCALAR: &[u8; 3usize] = b"IS\0";
+        const OUT_OFFSET: &[u8; 3usize] = b"OO\0";
+        const OUT_SCALAR: &[u8; 3usize] = b"OS\0";
+
+        let mut in_offset: i32 = 0;
+        let mut in_scalar: i32 = 0;
+        let mut out_offset: i32 = 0;
+        let mut out_scalar: i32 = 0;
+
+        let mut args = [
+            IN_OFFSET.as_ptr() as *mut _,
+            &mut in_offset as *mut i32 as *mut _,
+            IN_SCALAR.as_ptr() as *mut _,
+            &mut in_scalar as *mut i32 as *mut _,
+            OUT_OFFSET.as_ptr() as *mut _,
+            &mut out_offset as *mut i32 as *mut _,
+            OUT_SCALAR.as_ptr() as *mut _,
+            &mut out_scalar as *mut i32 as *mut _,
+        ];
+
+        let hardware_version = self.hardware_version;
+        self.service_call(ServiceCallType::OwlServiceGetParameters, &mut args)
+            .map_or_else(
+                |_| match hardware_version {
+                    OWL_MODULAR_HARDWARE => DeviceParameters::default_owl_modular(),
+                    _ => DeviceParameters::default(),
+                },
+                |_| DeviceParameters {
+                    input_offset: in_offset as f32 / u16::MAX as f32,
+                    input_scalar: in_scalar as f32 / u16::MAX as f32,
+                    output_offset: out_offset as f32 / u16::MAX as f32,
+                    output_scalar: out_scalar as f32 / u16::MAX as f32,
+                },
+            )
     }
 
     fn service_call(

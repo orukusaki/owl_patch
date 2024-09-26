@@ -2,7 +2,7 @@ extern crate alloc;
 
 use core::slice;
 
-use crate::ffi::program_vector as ffi;
+use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerOctave};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -23,6 +23,7 @@ mod meta;
 pub use meta::Meta;
 
 mod service_call;
+pub use service_call::DeviceParameters;
 use service_call::{ServiceCall, SystemFunction};
 
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
@@ -48,6 +49,7 @@ pub struct ProgramVector {
     pub audio: AudioBuffers,
     pub service_call: ServiceCall,
     midi: Option<Midi>,
+    volts_per_octave: Option<VoltsPerOctave>,
 }
 
 impl ProgramVector {
@@ -115,8 +117,9 @@ impl ProgramVector {
             parameters,
             meta,
             audio,
-            service_call: ServiceCall::new(pv.serviceCall),
+            service_call: ServiceCall::new(pv.serviceCall, pv.hardware_version),
             midi: None,
+            volts_per_octave: None,
         }
     }
 
@@ -124,6 +127,12 @@ impl ProgramVector {
         *self
             .midi
             .get_or_insert_with(|| Midi::init(&mut self.service_call))
+    }
+
+    pub fn volts_per_octave(&mut self) -> VoltsPerOctave {
+        *self
+            .volts_per_octave
+            .get_or_insert_with(|| VoltsPerOctave::new(self.service_call.device_parameters()))
     }
 }
 
