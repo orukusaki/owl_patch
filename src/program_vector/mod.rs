@@ -8,7 +8,6 @@ use core::{
 };
 
 use crate::ffi::program_vector as ffi;
-use crate::ffi::service_call::SYSTEM_FUNCTION_MIDI;
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -16,8 +15,8 @@ mod audio;
 pub use audio::{AudioBuffers, AudioFormat, AudioSettings};
 
 mod parameters;
-use midi::{midi_callback, Midi};
-use parameters::button_changed_callback;
+// use midi::{midi_receive, Midi};
+use parameters::button_changed;
 pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
 
 mod messages;
@@ -25,12 +24,13 @@ pub use messages::debug_message;
 use messages::Messages;
 
 mod midi;
+pub use midi::Midi;
 
 mod meta;
 pub use meta::Meta;
 
 mod service_call;
-pub use service_call::ServiceCall;
+pub use service_call::{ServiceCall, SystemFunction};
 
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
 pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
@@ -63,9 +63,10 @@ static PATCH_NAME: &CStr =
 // Owned wrapper around the static ProgramVector instance
 pub struct ProgramVector<'a> {
     pub parameters: Parameters<'a>,
-    pub midi: Midi,
     pub meta: Meta<'a>,
     pub audio: AudioBuffers<'a>,
+    pub service_call: ServiceCall,
+    midi: Option<Midi>,
 }
 
 impl ProgramVector<'static> {
@@ -107,14 +108,9 @@ impl ProgramVector<'static> {
             format,
         };
 
-        let mut service_call = ServiceCall::new(pv.serviceCall);
-
-        let _ = service_call.register_callback(SYSTEM_FUNCTION_MIDI, midi_callback as *mut _);
-        let midi = Midi::new(&mut service_call);
-
         Messages::init(&mut pv.message);
 
-        pv.buttonChangedCallback = Some(button_changed_callback);
+        pv.buttonChangedCallback = Some(button_changed);
         let parameters = Parameters::new(
             unsafe { slice::from_raw_parts(pv.parameters, pv.parameters_size as usize) },
             &pv.buttons,
@@ -139,10 +135,19 @@ impl ProgramVector<'static> {
 
         Self {
             parameters,
-            midi,
             meta,
             audio,
+            service_call: ServiceCall::new(pv.serviceCall),
+            midi: None,
         }
+    }
+}
+
+impl<'a: 'b, 'b> ProgramVector<'a> {
+    pub fn midi(&mut self) -> Midi {
+        *self
+            .midi
+            .get_or_insert_with(|| Midi::init(&mut self.service_call))
     }
 }
 
