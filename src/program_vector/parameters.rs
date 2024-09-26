@@ -76,7 +76,7 @@ impl<'a> Parameters<'a> {
 static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
     Mutex::new(RefCell::new(None));
 
-pub extern "C" fn button_changed_callback(bid: u8, state: u16, samples: u16) {
+pub extern "C" fn button_changed(bid: u8, state: u16, samples: u16) {
     let mut cb = BUTTON_CALLBACK.lock().take();
     if let Some(ref mut callback) = cb {
         callback(PatchButtonId::from_u8(bid).unwrap(), state, samples);

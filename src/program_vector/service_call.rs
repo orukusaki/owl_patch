@@ -1,13 +1,51 @@
+use crate::ffi::service_call as ffi;
 use ::core::{
     ffi::{c_int, c_void},
     option::Option,
 };
 use core::{ptr::NonNull, slice};
 
-use crate::ffi::service_call::{
-    OWL_SERVICE_GET_ARRAY, OWL_SERVICE_OK, OWL_SERVICE_REGISTER_CALLBACK,
-    OWL_SERVICE_REQUEST_CALLBACK, SYSTEM_FUNCTION_DRAW,
-};
+const OWL_SERVICE_OK: i32 = ffi::OWL_SERVICE_OK as i32;
+
+#[allow(dead_code)]
+#[repr(i32)]
+pub enum ServiceCallType {
+    OwlServiceArmRfftFastInitF32 = ffi::OWL_SERVICE_ARM_RFFT_FAST_INIT_F32 as i32,
+    OwlServiceArmCfftInitF32 = ffi::OWL_SERVICE_ARM_CFFT_INIT_F32 as i32,
+    OwlServiceGetParameters = ffi::OWL_SERVICE_GET_PARAMETERS as i32,
+    OwlServiceLoadResource = ffi::OWL_SERVICE_LOAD_RESOURCE as i32,
+    OwlServiceGetArray = ffi::OWL_SERVICE_GET_ARRAY as i32,
+    OwlServiceRegisterCallback = ffi::OWL_SERVICE_REGISTER_CALLBACK as i32,
+    OwlServiceRequestCallback = ffi::OWL_SERVICE_REQUEST_CALLBACK as i32,
+}
+
+pub enum SystemTable {
+    SystemTableLog,
+    SystemTablePow,
+}
+
+impl SystemTable {
+    fn code(self) -> &'static [u8; 4] {
+        match self {
+            SystemTable::SystemTableLog => ffi::SYSTEM_TABLE_LOG,
+            SystemTable::SystemTablePow => ffi::SYSTEM_TABLE_POW,
+        }
+    }
+}
+
+pub enum SystemFunction {
+    SystemFunctionDraw,
+    SystemFunctionMidi,
+}
+
+impl SystemFunction {
+    fn code(self) -> &'static [u8; 4] {
+        match self {
+            SystemFunction::SystemFunctionDraw => ffi::SYSTEM_FUNCTION_DRAW,
+            SystemFunction::SystemFunctionMidi => ffi::SYSTEM_FUNCTION_MIDI,
+        }
+    }
+}
 
 pub struct ServiceCall {
     service_call:
@@ -25,80 +63,51 @@ impl ServiceCall {
 
     pub fn register_callback(
         &mut self,
-        code: &[u8; 4usize],
+        function: SystemFunction,
         callback: *mut c_void,
     ) -> Result<(), &str> {
-        let service_call = self.service_call.ok_or("service call not available")?;
-
-        let mut args = [code.as_ptr() as *mut _, callback];
-
-        let ret = unsafe {
-            service_call(
-                OWL_SERVICE_REGISTER_CALLBACK as i32,
-                args.as_mut_ptr(),
-                args.len() as i32,
-            )
-        };
-        (ret == OWL_SERVICE_OK as i32)
-            .then_some(())
-            .ok_or("service call returned error")
+        let mut args = [function.code().as_ptr() as *mut _, callback];
+        self.service_call(ServiceCallType::OwlServiceRegisterCallback, &mut args)
     }
 
-    pub fn request_callback(&mut self, code: &[u8; 4usize]) -> Result<NonNull<()>, &str> {
-        let service_call = self.service_call.ok_or("service call not available")?;
-
-        let mut callback: *mut c_void = core::ptr::null_mut();
+    pub fn request_callback(&mut self, function: SystemFunction) -> Result<NonNull<()>, &str> {
+        let mut callback: *mut () = core::ptr::null_mut();
         let mut args = [
-            code.as_ptr() as *mut _,
+            function.code().as_ptr() as *mut _,
             // Pass a pointer to the callback pointer, allowing the OS to write to it
-            &mut callback as *mut *mut c_void as *mut c_void,
+            &mut callback as *mut *mut () as *mut c_void,
         ];
-        let ret = unsafe {
-            service_call(
-                OWL_SERVICE_REQUEST_CALLBACK as i32,
-                args.as_mut_ptr(),
-                args.len() as i32,
-            )
-        };
 
-        if ret == OWL_SERVICE_OK as i32 {
-            NonNull::new(callback as *mut ()).ok_or("bad callback")
-        } else {
-            Err("service call returned error")
-        }
+        self.service_call(ServiceCallType::OwlServiceRequestCallback, &mut args)
+            .and_then(|_| NonNull::new(callback).ok_or("bad callback"))
     }
 
-    pub fn get_array<T>(&mut self, code: &[u8; 4]) -> Result<&[T], &str> {
-        let service_call = self.service_call.ok_or("service call not available")?;
-
+    pub fn get_array<T>(&mut self, table: SystemTable) -> Result<&'static [T], &str> {
         let mut size: usize = 0;
         let mut ptr: *mut T = core::ptr::null_mut();
         let mut args = [
-            code.as_ptr() as *mut _,
+            table.code().as_ptr() as *mut _,
             &mut ptr as *mut *mut T as *mut _,
             &mut size as *mut usize as *mut _,
         ];
 
-        let ret = unsafe {
-            service_call(
-                OWL_SERVICE_GET_ARRAY as i32,
-                args.as_mut_ptr(),
-                args.len() as i32,
-            )
-        };
-
-        if ret == OWL_SERVICE_OK as i32 && !ptr.is_null() {
-            // Safety: Trusting the values returned by the OS
-            Ok(unsafe { slice::from_raw_parts(ptr as *const T, size) })
-        } else {
-            Err("service call returned error")
-        }
+        self.service_call(ServiceCallType::OwlServiceGetArray, &mut args)
+            .and_then(|_| NonNull::new(ptr).ok_or("array not found"))
+            .map(|ptr| unsafe { slice::from_raw_parts(ptr.as_ptr(), size) })
     }
 
-    pub fn register_draw_callback(
+    fn service_call(
         &mut self,
-        callback: fn(pixels: *mut u8, width: u16, height: u16),
+        call_type: ServiceCallType,
+        args: &mut [*mut c_void],
     ) -> Result<(), &str> {
-        self.register_callback(SYSTEM_FUNCTION_DRAW, callback as *mut _)
+        let service_call = self.service_call.ok_or("service call not available")?;
+
+        let ret = unsafe { service_call(call_type as i32, args.as_mut_ptr(), args.len() as i32) };
+
+        match ret {
+            OWL_SERVICE_OK => Ok(()),
+            _ => Err("service call returned error"),
+        }
     }
 }
