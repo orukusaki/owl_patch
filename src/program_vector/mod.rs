@@ -20,8 +20,8 @@ use parameters::button_changed;
 pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
 
 mod messages;
-pub use messages::debug_message;
 use messages::Messages;
+pub use messages::{debug_message, error};
 
 mod midi;
 pub use midi::Midi;
@@ -77,7 +77,10 @@ impl ProgramVector<'static> {
 
         // Safety: Our atomic flag means a 2nd call to this function will error, so there can never
         // be more than one mut ref to PROGRAM_VECTOR
+        #[allow(static_mut_refs)]
         let pv = unsafe { PROGRAM_VECTOR.assume_init_mut() };
+
+        Messages::init(&mut pv.message, &mut pv.error, pv.programStatus);
 
         // if the checksum is valid, then the vector was initialised
         if pv.checksum < PROGRAM_VECTOR_CHECKSUM_V13 {
@@ -107,8 +110,6 @@ impl ProgramVector<'static> {
             channels,
             format,
         };
-
-        Messages::init(&mut pv.message);
 
         pv.buttonChangedCallback = Some(button_changed);
         let parameters = Parameters::new(
@@ -165,12 +166,11 @@ mod talc_heap {
 
     #[global_allocator]
     pub static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
+
+    pub fn heap_bytes_used() -> usize {
+        ALLOCATOR.lock().get_counters().total_allocated_bytes as usize
+    }
 }
 
 #[cfg(feature = "talc")]
-pub fn heap_bytes_used() -> usize {
-    talc_heap::ALLOCATOR
-        .lock()
-        .get_counters()
-        .total_allocated_bytes as usize
-}
+pub use talc_heap::heap_bytes_used;
