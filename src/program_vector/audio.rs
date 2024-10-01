@@ -52,6 +52,7 @@ impl AudioBuffers {
     pub fn new(
         input: &'static *mut i32,
         output: &'static *mut i32,
+
         settings: AudioSettings,
         program_ready: Option<unsafe extern "C" fn()>,
     ) -> Self {
