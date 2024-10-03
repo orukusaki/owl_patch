@@ -4,7 +4,7 @@ target = "thumbv7em-none-eabihf"
 [target.thumbv7em-none-eabihf]
 rustflags = [
    "-C", "link-arg=--nmagic",
-   "-C", "link-arg=-Towl2.ld",
-   "-C", "target-cpu=cortex-m4",
+   "-C", "link-arg=-Towl3.ld",
+   "-C", "target-cpu=cortex-m7",
 ]
 runner = "./run.sh"
