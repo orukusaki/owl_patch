@@ -2,10 +2,12 @@ extern crate alloc;
 
 use core::{
     marker::PhantomData,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign},
     slice::{Chunks, ChunksMut},
 };
 
 use alloc::{boxed::Box, vec::Vec};
+use num_traits::{MulAdd, MulAddAssign};
 
 pub trait ConvertFrom<T: ?Sized> {
     fn convert_from(&mut self, other: T);
@@ -115,33 +117,49 @@ impl<F: Default + Clone, S: SampleStorage> Buffer<F, S> {
             _storage: PhantomData,
         }
     }
+
+    /// Get a reference to all samples in the buffer
+    /// Whether they are interleaved or not depends on the buffer's type
+    pub fn samples(&self) -> &[F] {
+        &self.storage
+    }
+
+    /// Get a mutable reference to all samples in the buffer
+    /// Whether they are interleaved or not depends on the buffer's type
+    pub fn samples_mut(&mut self) -> &mut [F] {
+        &mut self.storage
+    }
 }
 
 impl<F> Buffer<F, Channels> {
+    /// Get an iterator over the samples for each channel
     pub fn channels(&self) -> Chunks<'_, F> {
         self.storage.chunks(self.blocksize)
     }
 }
 
 impl<F> Buffer<F, Interleaved> {
+    /// Get an iterator over the samples for each frame
     pub fn frames(&self) -> Chunks<'_, F> {
         self.storage.chunks(self.channels)
     }
 }
 
 impl<F> Buffer<F, Channels> {
+    /// Get a mutable iterator over the samples for each channel
     pub fn channels_mut(&mut self) -> ChunksMut<'_, F> {
         self.storage.chunks_mut(self.blocksize)
     }
 }
 
 impl<F> Buffer<F, Interleaved> {
+    /// Get a mutable iterator over the samples for each frame
     pub fn frames_mut(&mut self) -> ChunksMut<'_, F> {
         self.storage.chunks_mut(self.channels)
     }
 }
 
-// Converting from a slice of data
+// Converting from a slice of data - the storage type is assumed to be the same
 impl<F1: ConvertFrom<F2>, F2: Copy, S> ConvertFrom<&[F2]> for Buffer<F1, S>
 where
     S: SampleStorage,
@@ -212,5 +230,121 @@ impl<F1: ConvertFrom<F2>, F2: Copy> ConvertFrom<&Buffer<F2, Interleaved>> for Bu
                 s.convert_from(*os);
             }
         }
+    }
+}
+
+macro_rules! impl_op {
+    ($assign_trait:ident, $assign_method:ident, $short_trait:ident, $short_method:ident) => {
+        impl<F, S: SampleStorage> $assign_trait<F> for Buffer<F, S>
+        where
+            F: $assign_trait<F> + Copy + Default,
+        {
+            fn $assign_method(&mut self, rhs: F) {
+                for s in self.samples_mut() {
+                    (*s).$assign_method(rhs);
+                }
+            }
+        }
+
+        impl<F, S: SampleStorage> $assign_trait<&Buffer<F, S>> for Buffer<F, S>
+        where
+            F: $assign_trait<F> + Copy + Default,
+        {
+            fn $assign_method(&mut self, rhs: &Buffer<F, S>) {
+                for (s, o) in self.samples_mut().iter_mut().zip(rhs.samples()) {
+                    (*s).$assign_method(*o);
+                }
+            }
+        }
+
+        impl<F, T, S: SampleStorage> $short_trait<T> for Buffer<F, S>
+        where
+            Self: $assign_trait<T>,
+        {
+            type Output = Self;
+
+            fn $short_method(mut self, rhs: T) -> Self::Output {
+                self.$assign_method(rhs);
+                self
+            }
+        }
+    };
+}
+
+impl_op!(AddAssign, add_assign, Add, add);
+impl_op!(SubAssign, sub_assign, Sub, sub);
+impl_op!(MulAssign, mul_assign, Mul, mul);
+impl_op!(DivAssign, div_assign, Div, div);
+impl_op!(RemAssign, rem_assign, Rem, rem);
+
+impl<F, S: SampleStorage> MulAddAssign<F, F> for Buffer<F, S>
+where
+    F: Copy + Default + MulAddAssign<F>,
+{
+    fn mul_add_assign(&mut self, a: F, b: F) {
+        for s in self.samples_mut() {
+            s.mul_add_assign(a, b);
+        }
+    }
+}
+
+impl<F, S: SampleStorage> MulAddAssign<&Buffer<F, S>, F> for Buffer<F, S>
+where
+    Self: for<'a> MulAssign<&'a Buffer<F, S>> + AddAssign<F>,
+    F: Copy + Default,
+{
+    fn mul_add_assign(&mut self, a: &Buffer<F, S>, b: F) {
+        self.mul_assign(a);
+        self.add_assign(b);
+    }
+}
+
+impl<F, S: SampleStorage> MulAddAssign<F, &Buffer<F, S>> for Buffer<F, S>
+where
+    Self: MulAssign<F> + for<'a> AddAssign<&'a Buffer<F, S>>,
+    F: Copy + Default,
+{
+    fn mul_add_assign(&mut self, a: F, b: &Buffer<F, S>) {
+        self.mul_assign(a);
+        self.add_assign(b);
+    }
+}
+
+impl<F, S: SampleStorage> MulAddAssign<&Buffer<F, S>, &Buffer<F, S>> for Buffer<F, S>
+where
+    Self: for<'a> MulAssign<&'a Buffer<F, S>> + for<'a> AddAssign<&'a Buffer<F, S>>,
+    F: Copy + Default + MulAddAssign<F, F>,
+{
+    #[inline(never)]
+    fn mul_add_assign(&mut self, a: &Buffer<F, S>, b: &Buffer<F, S>) {
+        // Seems to be faster than doing it in a single loop - on m4 and m7
+        self.mul_assign(a);
+        self.add_assign(b);
+    }
+}
+
+impl<F, F1, F2, S: SampleStorage> MulAdd<F1, F2> for Buffer<F, S>
+where
+    Self: MulAddAssign<F1, F2>,
+{
+    type Output = Self;
+    fn mul_add(mut self, a: F1, b: F2) -> Self::Output {
+        self.mul_add_assign(a, b);
+        self
+    }
+}
+
+impl<F, S: SampleStorage> Neg for Buffer<F, S>
+where
+    F: Neg<Output = F> + Copy + Default,
+{
+    type Output = Self;
+
+    fn neg(mut self) -> Self::Output {
+        for s in self.samples_mut() {
+            *s = s.neg();
+        }
+
+        self
     }
 }

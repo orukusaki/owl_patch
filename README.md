@@ -30,7 +30,7 @@ pub extern "C" fn main() -> ! {
 rustup target add thumbv7em-none-eabihf
 ```
 
-2. Install `gcc-arm-none-eabi` and [FirmwareSender](<https://github.com/pingdynasty/FirmwareSender/releases>). See the instructions on https://github.com/RebelTechnology/OwlProgram for details.
+2. Install `gcc-arm-none-eabi` and [FirmwareSender](<https://github.com/pingdynasty/FirmwareSender/releases>). See the instructions on <https://github.com/RebelTechnology/OwlProgram> for details.
 
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
@@ -76,7 +76,7 @@ rustflags = [
 #]
 ```
 
-5. Copy one of the [examples](examples) into `src/main.rs`
+5. Copy one of the [examples](https://github.com/orukusaki/owl_patch/tree/main/examples) into `src/main.rs`
 
 6. Build your patch
 ```bash

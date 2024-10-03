@@ -42,11 +42,8 @@ pub extern "C" fn main() -> ! {
 
         buffer.convert_from(input);
 
-        for ch in buffer.channels_mut() {
-            for sample in ch.iter_mut() {
-                *sample *= volume
-            }
-        }
+        buffer *= volume;
+
         buffer.convert_to(output);
     });
 }
