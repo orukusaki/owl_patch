@@ -1,5 +1,7 @@
 use core::slice;
 
+use alloc::boxed::Box;
+
 use crate::sample_buffer::{Buffer, ConvertFrom, Interleaved, Samplei32, Samplew16};
 
 use super::{
@@ -61,7 +63,7 @@ impl<'a> AudioBuffers<'a> {
 
     pub fn run(
         &mut self,
-        f: impl FnMut(&Buffer<i32, Interleaved>, &mut Buffer<i32, Interleaved>),
+        f: impl FnMut(&Buffer<i32, Interleaved, Box<[i32]>>, &mut Buffer<i32, Interleaved, Box<[i32]>>),
     ) -> ! {
         match self.settings.format {
             AudioFormat::Format24B16 => self.run_with_format::<Samplew16>(f),
@@ -71,7 +73,10 @@ impl<'a> AudioBuffers<'a> {
 
     fn run_with_format<F>(
         &mut self,
-        mut f: impl FnMut(&Buffer<i32, Interleaved>, &mut Buffer<i32, Interleaved>),
+        mut f: impl FnMut(
+            &Buffer<i32, Interleaved, Box<[i32]>>,
+            &mut Buffer<i32, Interleaved, Box<[i32]>>,
+        ),
     ) -> !
     where
         i32: ConvertFrom<F>,
@@ -82,10 +87,10 @@ impl<'a> AudioBuffers<'a> {
         };
         //TODO: allocate upfront for memory reporting
         let mut input_buffer =
-            Buffer::<i32, Interleaved>::new(self.settings.channels, self.settings.blocksize);
+            Buffer::<i32, Interleaved, _>::new(self.settings.channels, self.settings.blocksize);
 
         let mut output_buffer =
-            Buffer::<i32, Interleaved>::new(self.settings.channels, self.settings.blocksize);
+            Buffer::<i32, Interleaved, _>::new(self.settings.channels, self.settings.blocksize);
         loop {
             // Safety: Trusting the OS that the provided function is safe to call
             // Note: any callbacks are invoked during this call

@@ -12,7 +12,7 @@ pub extern "C" fn main() -> ! {
     let mut pv = ProgramVector::take();
 
     let audio_settings = pv.audio.settings;
-    let mut buffer: Buffer<f32, Channels> =
+    let mut buffer: Buffer<f32, Channels, _> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     let parameters = pv.parameters;
@@ -42,7 +42,9 @@ pub extern "C" fn main() -> ! {
 
         buffer.convert_from(input);
 
-        buffer *= volume;
+        for mut channel in buffer.channels_mut() {
+            channel *= volume;
+        }
 
         buffer.convert_to(output);
     });

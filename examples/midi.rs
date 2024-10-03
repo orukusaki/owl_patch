@@ -19,8 +19,7 @@ pub extern "C" fn main() -> ! {
     let audio_settings = pv.audio.settings;
 
     // allocate a working buffer (uses vec intenally)
-    let mut buffer: Buffer<f32, Interleaved> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     let (mut osc, inc) = Sawtooth::new();
     let mul = 2.0 / audio_settings.sample_rate as f32;

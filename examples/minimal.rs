@@ -13,7 +13,7 @@ pub extern "C" fn main() -> ! {
 
     let audio_settings = pv.audio.settings;
     // allocate a working buffer (uses vec intenally)
-    let mut buffer: Buffer<f32, Channels> =
+    let mut buffer: Buffer<f32, Channels, _> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     // For correct reporting, this should be called after all heap allocations are done with.
