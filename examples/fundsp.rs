@@ -5,7 +5,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 use owl_patch::{
     program_vector::{heap_bytes_used, PatchParameterId, ProgramVector},
-    sample_buffer::{Buffer, ConvertFrom, ConvertTo, Interleaved},
+    sample_buffer::{Buffer, ConvertFrom, ConvertTo},
 };
 
 use fundsp::hacker32::*;
@@ -18,8 +18,7 @@ pub extern "C" fn main() -> ! {
     let audio_settings = pv.audio.settings;
 
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
-    let mut buffer: Buffer<f32, Interleaved> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     // Set up FunDsp objects
     let lp_centre = shared(10000.0);
