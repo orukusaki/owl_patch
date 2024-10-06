@@ -2,21 +2,21 @@ use core::slice;
 
 use crate::ffi::program_vector::MemorySegment;
 
-pub struct Meta<'a> {
-    cycles_per_block: &'a u32,
-    heap_bytes_used: &'a mut u32,
-    checksum: &'a u8,
-    hardware_version: &'a u8,
-    heap_locations: &'a *mut MemorySegment,
+pub struct Meta {
+    cycles_per_block: &'static u32,
+    heap_bytes_used: &'static mut u32,
+    checksum: &'static u8,
+    hardware_version: &'static u8,
+    heap_locations: &'static *mut MemorySegment,
 }
 
-impl<'a> Meta<'a> {
+impl Meta {
     pub fn new(
-        cycles_per_block: &'a u32,
-        heap_bytes_used: &'a mut u32,
-        checksum: &'a u8,
-        hardware_version: &'a u8,
-        heap_locations: &'a *mut MemorySegment,
+        cycles_per_block: &'static u32,
+        heap_bytes_used: &'static mut u32,
+        checksum: &'static u8,
+        hardware_version: &'static u8,
+        heap_locations: &'static *mut MemorySegment,
     ) -> Self {
         Self {
             cycles_per_block,
@@ -31,20 +31,20 @@ impl<'a> Meta<'a> {
         *self.heap_bytes_used = value as u32;
     }
 
-    pub fn cycles_per_block(&self) -> &u32 {
-        self.cycles_per_block
+    pub fn cycles_per_block(&self) -> u32 {
+        *self.cycles_per_block
     }
 
-    pub fn heap_bytes_used(&self) -> &&'a mut u32 {
-        &self.heap_bytes_used
+    pub fn heap_bytes_used(&self) -> u32 {
+        *self.heap_bytes_used
     }
 
-    pub fn checksum(&self) -> &u8 {
-        self.checksum
+    pub fn checksum(&self) -> u8 {
+        *self.checksum
     }
 
-    pub fn hardware_version(&self) -> &u8 {
-        self.hardware_version
+    pub fn hardware_version(&self) -> u8 {
+        *self.hardware_version
     }
 
     pub fn memory_segments(&self) -> &[MemorySegment] {

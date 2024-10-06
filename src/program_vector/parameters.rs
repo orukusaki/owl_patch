@@ -10,18 +10,18 @@ pub use crate::ffi::openware_midi_control::{PatchButtonId, PatchParameterId};
 
 /// Handles the Patch input and output parameters; knobs and buttons etc
 #[derive(Clone, Copy)]
-pub struct Parameters<'a> {
-    parameters: &'a [i16],
-    buttons: &'a u16,
+pub struct Parameters {
+    parameters: &'static [i16],
+    buttons: &'static u16,
     register_patch_parameter: Option<unsafe extern "C" fn(id: u8, name: *const c_char)>,
     set_patch_parameter: Option<unsafe extern "C" fn(id: u8, value: i16)>,
     set_button: Option<unsafe extern "C" fn(id: u8, state: u16, samples: u16)>,
 }
 
-impl<'a> Parameters<'a> {
+impl Parameters {
     pub fn new(
-        parameters: &'a [i16],
-        buttons: &'a u16,
+        parameters: &'static [i16],
+        buttons: &'static u16,
         register_patch_parameter: Option<unsafe extern "C" fn(id: u8, name: *const c_char)>,
         set_patch_parameter: Option<unsafe extern "C" fn(id: u8, value: i16)>,
         set_button: Option<unsafe extern "C" fn(id: u8, state: u16, samples: u16)>,

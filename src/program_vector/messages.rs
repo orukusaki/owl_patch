@@ -11,18 +11,18 @@ use crate::ffi::program_vector::ProgramVectorAudioStatus;
 
 use super::CONFIGURATION_ERROR_STATUS;
 
-pub struct Messages<'a> {
-    message: &'a mut *mut c_char,
-    error: &'a mut i8,
+pub struct Messages {
+    message: &'static mut *mut c_char,
+    error: &'static mut i8,
     program_status: Option<unsafe extern "C" fn(status: ProgramVectorAudioStatus)>,
     buffer: [u8; 64],
 }
 
-unsafe impl<'a> Send for Messages<'a> {}
+unsafe impl Send for Messages {}
 
 static INSTANCE: Mutex<RefCell<Option<Messages>>> = Mutex::new(RefCell::new(None));
 
-impl Messages<'static> {
+impl Messages {
     pub fn init(
         message: &'static mut *mut c_char,
         error: &'static mut i8,
@@ -32,12 +32,10 @@ impl Messages<'static> {
             .lock()
             .replace(Some(Self::new(message, error, program_status)));
     }
-}
 
-impl<'a> Messages<'a> {
     pub fn new(
-        message: &'a mut *mut c_char,
-        error: &'a mut i8,
+        message: &'static mut *mut c_char,
+        error: &'static mut i8,
         program_status: Option<unsafe extern "C" fn(status: ProgramVectorAudioStatus)>,
     ) -> Self {
         Self {

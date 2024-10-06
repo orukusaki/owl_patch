@@ -39,17 +39,17 @@ impl AudioFormat {
     }
 }
 
-pub struct AudioBuffers<'a> {
-    input: &'a *mut i32,
-    output: &'a *mut i32,
+pub struct AudioBuffers {
+    input: &'static *mut i32,
+    output: &'static *mut i32,
     pub settings: AudioSettings,
     program_ready: Option<unsafe extern "C" fn()>,
 }
 
-impl<'a> AudioBuffers<'a> {
+impl AudioBuffers {
     pub fn new(
-        input: &'a *mut i32,
-        output: &'a *mut i32,
+        input: &'static *mut i32,
+        output: &'static *mut i32,
         settings: AudioSettings,
         program_ready: Option<unsafe extern "C" fn()>,
     ) -> Self {
