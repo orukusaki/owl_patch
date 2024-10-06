@@ -8,7 +8,7 @@ use num_traits::Float;
 use owl_patch::{
     midi_message::MidiMessage,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, ConvertTo, Interleaved},
+    sample_buffer::{Buffer, ConvertTo},
 };
 
 #[no_mangle]
