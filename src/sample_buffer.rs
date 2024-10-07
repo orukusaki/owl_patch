@@ -2,7 +2,10 @@ extern crate alloc;
 
 use core::{
     marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign},
+    ops::{
+        Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub,
+        SubAssign,
+    },
     slice::{Chunks, ChunksMut},
 };
 
@@ -150,6 +153,20 @@ impl<F, T: AsRef<[F]>> Buffer<F, Mono, T> {
     }
 }
 
+impl<F, T: AsRef<[F]>> Deref for Buffer<F, Mono, T> {
+    type Target = [F];
+
+    fn deref(&self) -> &Self::Target {
+        self.samples()
+    }
+}
+
+impl<F, T: AsRef<[F]> + AsMut<[F]>> DerefMut for Buffer<F, Mono, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.samples_mut()
+    }
+}
+
 impl<F, T: AsMut<[F]> + AsRef<[F]>> Buffer<F, Mono, T> {
     pub fn mono_mut(samples: T) -> Self {
         let len = samples.as_ref().len();
@@ -195,21 +212,37 @@ impl<F, T: AsMut<[F]>> Buffer<F, Interleaved, T> {
 
 impl<F, T: AsRef<[F]>> Buffer<F, Channels, T> {
     /// Get an iterator over the samples for each channel
-    pub fn channels(&self) -> impl IntoIterator<Item = Buffer<F, Mono, &[F]>> {
+    pub fn channels(&self) -> impl Iterator<Item = Buffer<F, Mono, &[F]>> {
         self.samples
             .as_ref()
             .chunks(self.blocksize)
             .map(|chunk| Buffer::mono_ref(chunk))
     }
+
+    pub fn left(&self) -> Option<Buffer<F, Mono, &[F]>> {
+        self.channels().take(1).next()
+    }
+
+    pub fn right(&self) -> Option<Buffer<F, Mono, &[F]>> {
+        self.channels().skip(1).take(1).next()
+    }
 }
 
 impl<F, T: AsMut<[F]>> Buffer<F, Channels, T> {
     /// Get a mutable iterator over the samples for each channel
-    pub fn channels_mut(&mut self) -> impl IntoIterator<Item = Buffer<F, Mono, &mut [F]>> {
+    pub fn channels_mut(&mut self) -> impl Iterator<Item = Buffer<F, Mono, &mut [F]>> {
         self.samples
             .as_mut()
             .chunks_mut(self.blocksize)
             .map(|chunk| Buffer::mono_mut(chunk))
+    }
+
+    pub fn left_mut(&mut self) -> Option<Buffer<F, Mono, &mut [F]>> {
+        self.channels_mut().take(1).next()
+    }
+
+    pub fn right_mut(&mut self) -> Option<Buffer<F, Mono, &mut [F]>> {
+        self.channels_mut().skip(1).take(1).next()
     }
 }
 
