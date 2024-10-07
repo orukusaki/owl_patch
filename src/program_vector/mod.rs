@@ -61,15 +61,15 @@ static PATCH_NAME: &CStr =
     unsafe { CStr::from_bytes_with_nul_unchecked(concat!(env!("PATCHNAME"), "\0").as_bytes()) };
 
 // Owned wrapper around the static ProgramVector instance
-pub struct ProgramVector<'a> {
-    pub parameters: Parameters<'a>,
-    pub meta: Meta<'a>,
-    pub audio: AudioBuffers<'a>,
+pub struct ProgramVector {
+    pub parameters: Parameters,
+    pub meta: Meta,
+    pub audio: AudioBuffers,
     pub service_call: ServiceCall,
     midi: Option<Midi>,
 }
 
-impl ProgramVector<'static> {
+impl ProgramVector {
     pub fn take() -> Self {
         if TAKEN.swap(true, Ordering::Relaxed) {
             panic!("program vector already taken");
@@ -142,9 +142,7 @@ impl ProgramVector<'static> {
             midi: None,
         }
     }
-}
 
-impl<'a: 'b, 'b> ProgramVector<'a> {
     pub fn midi(&mut self) -> Midi {
         *self
             .midi
