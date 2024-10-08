@@ -1,11 +1,6 @@
 extern crate alloc;
 
-use core::{
-    ffi::CStr,
-    mem::MaybeUninit,
-    slice,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::slice;
 
 use crate::ffi::program_vector as ffi;
 
@@ -15,8 +10,6 @@ mod audio;
 pub use audio::{AudioBuffers, AudioFormat, AudioSettings};
 
 mod parameters;
-// use midi::{midi_receive, Midi};
-use parameters::button_changed;
 pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
 
 mod messages;
@@ -30,7 +23,7 @@ mod meta;
 pub use meta::Meta;
 
 mod service_call;
-pub use service_call::{ServiceCall, SystemFunction};
+use service_call::{ServiceCall, SystemFunction};
 
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
 pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
@@ -48,18 +41,6 @@ pub const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
 pub const AUDIO_FORMAT_FORMAT_MASK: u8 = ffi::AUDIO_FORMAT_FORMAT_MASK as u8;
 pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 
-// The Program Vector is how we communicate with the OS. It is initialised by the OS at runtime.
-// It is assigned to the special .pv section, and its address will be written to the program header block
-// in the binary by the linker script
-#[link_section = ".pv"]
-#[used]
-pub(crate) static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
-static TAKEN: AtomicBool = AtomicBool::new(false);
-
-// Safety: Adding the null byte guarantees a valid Cstr.
-static PATCH_NAME: &CStr =
-    unsafe { CStr::from_bytes_with_nul_unchecked(concat!(env!("PATCHNAME"), "\0").as_bytes()) };
-
 // Owned wrapper around the static ProgramVector instance
 pub struct ProgramVector {
     pub parameters: Parameters,
@@ -70,16 +51,12 @@ pub struct ProgramVector {
 }
 
 impl ProgramVector {
-    pub fn take() -> Self {
-        if TAKEN.swap(true, Ordering::Relaxed) {
-            panic!("program vector already taken");
-        }
-
-        // Safety: Our atomic flag means a 2nd call to this function will error, so there can never
-        // be more than one mut ref to PROGRAM_VECTOR
-        #[allow(static_mut_refs)]
-        let pv = unsafe { PROGRAM_VECTOR.assume_init_mut() };
-
+    /// # Safety
+    /// patch_name must be a valid pointer
+    pub unsafe fn new(
+        pv: &'static mut FfiProgramVector,
+        patch_name: *const core::ffi::c_char,
+    ) -> Self {
         Messages::init(&mut pv.message, &mut pv.error, pv.programStatus);
 
         // if the checksum is valid, then the vector was initialised
@@ -103,6 +80,13 @@ impl ProgramVector {
             });
         }
 
+        // Register the patch by calling the provided function in the pv. It seems like the channel counts
+        // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
+        // The only thing it really does is display the patch name on devices with a screen
+        if let Some(register_patch) = pv.registerPatch {
+            unsafe { register_patch(patch_name, 2, 2) };
+        }
+
         let (format, channels) = AudioFormat::parse(pv.audio_format);
         let audio_settings = AudioSettings {
             sample_rate: pv.audio_samplingrate as usize,
@@ -111,21 +95,14 @@ impl ProgramVector {
             format,
         };
 
-        pv.buttonChangedCallback = Some(button_changed);
         let parameters = Parameters::new(
             unsafe { slice::from_raw_parts(pv.parameters, pv.parameters_size as usize) },
             &pv.buttons,
             pv.registerPatchParameter,
             pv.setPatchParameter,
             pv.setButton,
+            &mut pv.buttonChangedCallback,
         );
-
-        // Register the patch by calling the provided function in the pv. It seems like the channel counts
-        // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
-        // The only thing it really does is display the patch name on devices with a screen
-        if let Some(register_patch) = pv.registerPatch {
-            unsafe { register_patch(PATCH_NAME.as_ptr(), 2, 2) };
-        }
 
         let audio = AudioBuffers::new(
             &pv.audio_input,

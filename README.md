@@ -5,13 +5,14 @@ Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](
 #![no_std]
 
 use owl_patch::{
+    patch,
     program_vector::{heap_bytes_used, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
 };
 
-#[no_mangle]
-pub extern "C" fn main() -> ! {
-    let mut pv = ProgramVector::take();
+
+#[patch("Example Patch")];
+fn main(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
     let mut buffer: Buffer<f32, Channels> = Buffer::new(audio_settings.channels, audio_settings.blocksize);
     pv.meta.set_heap_bytes_used(heap_bytes_used());
@@ -80,12 +81,12 @@ rustflags = [
 
 6. Build your patch
 ```bash
-PATCHNAME="Your Patch Name" cargo build --release
+cargo build --release
 ```
 
 7. Use `arm-none-eabi-objcopy` to get the final binary:
 ```bash
-arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch> target/thumbv7em-none-eabihf/release/<your_patch>.bin
+arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/main target/thumbv7em-none-eabihf/release/main.bin
 ```
 
 8. Use `FirmwareSender` to upload the patch to your device.

@@ -1,0 +1,15 @@
+[package]
+name = "owl_patch_macros"
+version = "0.1.0"
+edition = "2021"
+authors = ["orukusaki"]
+
+[dependencies]
+quote = "1.0"
+
+[lib]
+proc-macro = true
+
+[dependencies.syn]
+features = ["extra-traits", "full"]
+version = "2.0"

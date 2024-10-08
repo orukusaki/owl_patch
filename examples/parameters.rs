@@ -2,15 +2,13 @@
 #![no_std]
 
 use owl_patch::{
+    patch,
     program_vector::{heap_bytes_used, PatchButtonId, PatchParameterId, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
 };
 
-#[no_mangle]
-pub extern "C" fn main() -> ! {
-    // The ProgramVector lets us talk to the OS
-    let mut pv = ProgramVector::take();
-
+#[patch("Minimal")]
+fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
     let mut buffer: Buffer<f32, Channels, _> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
