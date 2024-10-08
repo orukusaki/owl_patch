@@ -44,6 +44,8 @@ pub struct AudioBuffers {
     output: &'static *mut i32,
     pub settings: AudioSettings,
     program_ready: Option<unsafe extern "C" fn()>,
+    input_buffer: Buffer<i32, Interleaved, Box<[i32]>>,
+    output_buffer: Buffer<i32, Interleaved, Box<[i32]>>,
 }
 
 impl AudioBuffers {
@@ -53,11 +55,19 @@ impl AudioBuffers {
         settings: AudioSettings,
         program_ready: Option<unsafe extern "C" fn()>,
     ) -> Self {
+        let input_buffer =
+            Buffer::<i32, Interleaved, _>::new(settings.channels, settings.blocksize);
+
+        let output_buffer =
+            Buffer::<i32, Interleaved, _>::new(settings.channels, settings.blocksize);
+
         Self {
             input,
             output,
             settings,
             program_ready,
+            input_buffer,
+            output_buffer,
         }
     }
 
@@ -85,18 +95,14 @@ impl AudioBuffers {
         let Some(program_ready) = self.program_ready else {
             panic!("no audio available")
         };
-        //TODO: allocate upfront for memory reporting
-        let mut input_buffer =
-            Buffer::<i32, Interleaved, _>::new(self.settings.channels, self.settings.blocksize);
 
-        let mut output_buffer =
-            Buffer::<i32, Interleaved, _>::new(self.settings.channels, self.settings.blocksize);
         loop {
             // Safety: Trusting the OS that the provided function is safe to call
             // Note: any callbacks are invoked during this call
             unsafe { program_ready() };
 
-            // Safety: The OS provides a valid buffer of the appropriate length
+            // Safety: The OS provides a valid buffer of the appropriate length.
+            // The buffers remain valid until the next call to program_ready()
             let input = unsafe {
                 slice::from_raw_parts(
                     (*self.input) as *const F,
@@ -104,9 +110,9 @@ impl AudioBuffers {
                 )
             };
 
-            input_buffer.convert_from(input);
+            self.input_buffer.convert_from(input);
 
-            f(&input_buffer, &mut output_buffer);
+            f(&self.input_buffer, &mut self.output_buffer);
 
             // Safety: The OS provides a valid buffer of the appropriate length
             let mut output = unsafe {
@@ -116,7 +122,7 @@ impl AudioBuffers {
                 )
             };
 
-            output.convert_from(&output_buffer);
+            output.convert_from(&self.output_buffer);
         }
     }
 }
