@@ -6,7 +6,6 @@ use core::{
         Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub,
         SubAssign,
     },
-    slice::{Chunks, ChunksMut},
 };
 
 use alloc::{boxed::Box, vec::Vec};
@@ -228,13 +227,13 @@ impl<'a, F, S: SampleStorage> Buffer<F, S, &'a mut [F]> {
 
 impl<F, T: AsRef<[F]>> Buffer<F, Interleaved, T> {
     /// Get an iterator over the samples for each frame
-    pub fn frames(&self) -> Chunks<'_, F> {
+    pub fn frames(&self) -> impl Iterator<Item = &[F]> {
         self.samples.as_ref().chunks(self.channels)
     }
 }
 impl<F, T: AsMut<[F]>> Buffer<F, Interleaved, T> {
     /// Get a mutable iterator over the samples for each frame
-    pub fn frames_mut(&mut self) -> ChunksMut<'_, F> {
+    pub fn frames_mut(&mut self) -> impl Iterator<Item = &mut [F]> {
         self.samples.as_mut().chunks_mut(self.channels)
     }
 }
