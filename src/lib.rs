@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![feature(array_chunks)]
 #![feature(const_refs_to_static)]
 #![feature(slice_from_ptr_range)]
@@ -11,21 +11,24 @@ pub mod midi_message;
 pub mod program_vector;
 pub mod sample_buffer;
 
-use alloc::format;
 use ffi::program_vector::ProgramVector as FfiProgramVector;
-use program_vector::error;
 
 use core::{
     ffi::{c_char, c_void},
     mem::MaybeUninit,
-    panic::PanicInfo,
 };
 
 pub use owl_patch_macros::patch;
 
-#[panic_handler]
-unsafe fn panic_handler(info: &PanicInfo) -> ! {
-    error(&format!("{}", info.message()))
+#[cfg(not(test))]
+mod panic {
+    use super::program_vector::error;
+    use alloc::format;
+    use core::panic::PanicInfo;
+    #[panic_handler]
+    unsafe fn panic_handler(info: &PanicInfo) -> ! {
+        error(&format!("{}", info.message()))
+    }
 }
 
 #[doc(hidden)]
