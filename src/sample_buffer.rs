@@ -181,6 +181,7 @@ impl<F, T: AsMut<[F]> + AsRef<[F]>> Buffer<F, Mono, T> {
 }
 
 impl<F: Default + Clone, S: SampleStorage> Buffer<F, S, Box<[F]>> {
+    /// Create a new buffer, allocating a boxed slice to hole sample data
     pub fn new(channels: usize, blocksize: usize) -> Self {
         let len = channels * blocksize;
         let mut samples = Vec::with_capacity(len);
@@ -189,6 +190,34 @@ impl<F: Default + Clone, S: SampleStorage> Buffer<F, S, Box<[F]>> {
 
         Self {
             samples: samples.into_boxed_slice(),
+            channels,
+            blocksize,
+            _storage: PhantomData,
+            _format: PhantomData,
+        }
+    }
+}
+
+impl<'a, F, S: SampleStorage> Buffer<F, S, &'a [F]> {
+    /// Create a new buffer holding a reference to data allocated externally, read-only
+    pub fn new_ref<T: AsRef<[F]>>(channels: usize, blocksize: usize, samples: &'a T) -> Self {
+        assert_eq!(channels * blocksize, samples.as_ref().len());
+        Self {
+            samples: samples.as_ref(),
+            channels,
+            blocksize,
+            _storage: PhantomData,
+            _format: PhantomData,
+        }
+    }
+}
+
+impl<'a, F, S: SampleStorage> Buffer<F, S, &'a mut [F]> {
+    /// Create a new buffer holding a reference to mutable data allocated externally
+    pub fn new_mut<T: AsMut<[F]>>(channels: usize, blocksize: usize, samples: &'a mut T) -> Self {
+        assert_eq!(channels * blocksize, samples.as_mut().len());
+        Self {
+            samples: samples.as_mut(),
             channels,
             blocksize,
             _storage: PhantomData,
@@ -302,7 +331,7 @@ where
 {
     fn convert_from(&mut self, other: &Buffer<F2, Channels, T2>) {
         assert_eq!(self.channels, other.channels);
-        for (n, ch) in other.channels().into_iter().enumerate() {
+        for (n, ch) in other.channels().enumerate() {
             let it = self
                 .samples
                 .as_mut()
@@ -328,7 +357,7 @@ where
 {
     fn convert_from(&mut self, other: &Buffer<F2, Interleaved, T2>) {
         assert_eq!(self.channels, other.channels);
-        for (n, mut ch) in self.channels_mut().into_iter().enumerate() {
+        for (n, mut ch) in self.channels_mut().enumerate() {
             let it = other
                 .samples
                 .as_ref()
