@@ -6,5 +6,6 @@
     "rust.all_targets": false,
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
+        "macros/Cargo.toml"
     ]
 }
