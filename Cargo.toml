@@ -11,6 +11,7 @@ num-traits = { version = "0.2.19", default-features = false,  features = ["libm"
 talc = {version = "4.4.1", features = ["counters"], optional = true}
 spin = "0.9.8"
 const-str = "0.5.7"
+owl_patch_macros = {path = "./macros"}
 
 [dev-dependencies]
 fundsp = { version = "0.18.2", default-features = false }

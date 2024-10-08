@@ -10,8 +10,8 @@ use owl_patch::{
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
 };
 
-patch!("Example Patch ", main);
 
+#[patch("Example Patch")];
 fn main(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
     let mut buffer: Buffer<f32, Channels> = Buffer::new(audio_settings.channels, audio_settings.blocksize);

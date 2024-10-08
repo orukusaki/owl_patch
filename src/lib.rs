@@ -6,7 +6,7 @@
 
 extern crate alloc;
 
-mod ffi;
+pub mod ffi;
 pub mod midi_message;
 pub mod program_vector;
 pub mod sample_buffer;
@@ -20,40 +20,12 @@ use core::{
     mem::MaybeUninit,
     panic::PanicInfo,
 };
+
+pub use owl_patch_macros::patch;
+
 #[panic_handler]
 unsafe fn panic_handler(info: &PanicInfo) -> ! {
     error(&format!("{}", info.message()))
-}
-
-#[macro_export]
-/// Register the patch, providing its name, and the name of your "main" function.
-/// ```
-/// patch!("My New Patch", run);
-/// fn run(mut pv: ProgramVector) -> ! {}
-/// ```
-/// Must be called exactly once for your patch to build properly
-macro_rules! patch {
-    ($patch_name:literal, $main_func:ident) => {
-        mod __header {
-
-            #[link_section = ".program_header"]
-            static HEADER: owl_patch::ProgramHeader<{ $patch_name.len() + 1 }> =
-                owl_patch::ProgramHeader::new(const_str::to_byte_array!(concat!(
-                    $patch_name,
-                    "\0"
-                )));
-
-            #[no_mangle]
-            extern "Rust" fn __patch_name() -> *const core::ffi::c_char {
-                HEADER.patch_name()
-            }
-
-            #[no_mangle]
-            extern "Rust" fn __main() -> ! {
-                super::$main_func(owl_patch::program_vector::ProgramVector::take());
-            }
-        }
-    };
 }
 
 #[doc(hidden)]
@@ -74,7 +46,10 @@ unsafe impl<const N: usize> Sync for ProgramHeader<N> {}
 impl<const N: usize> ProgramHeader<N> {
     const MAGIC_WORD: u32 = 0xdadac0de;
 
-    pub const fn new(patch_name: [u8; N]) -> Self {
+    pub const fn new(
+        patch_name: [u8; N],
+        programvector: *const MaybeUninit<FfiProgramVector>,
+    ) -> Self {
         extern "C" {
             static mut _startprog: c_void;
             static mut _endprog: c_void;
@@ -89,7 +64,7 @@ impl<const N: usize> ProgramHeader<N> {
             reset_handler,
             stack: &raw const _stack,
             estack: &raw const _estack,
-            programvector: &raw const program_vector::PROGRAM_VECTOR,
+            programvector,
             patch_name,
         }
     }
@@ -101,6 +76,7 @@ impl<const N: usize> ProgramHeader<N> {
 
 /// Startup function
 unsafe extern "C" fn reset_handler() {
+    // These values are provided by the linker script
     extern "C" {
         static mut _sidata: u32;
         static mut _sdata: u32;
@@ -109,6 +85,7 @@ unsafe extern "C" fn reset_handler() {
         static mut _ebss: u32;
     }
 
+    // This function is created by the patch! macro.
     extern "Rust" {
         fn __main() -> !;
     }
