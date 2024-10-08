@@ -7,15 +7,14 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use num_traits::Float;
 use owl_patch::{
     midi_message::MidiMessage,
+    patch,
     program_vector::{heap_bytes_used, ProgramVector},
     sample_buffer::{Buffer, ConvertTo},
 };
 
-#[no_mangle]
-pub extern "C" fn main() -> ! {
-    // The ProgramVector lets us talk to the OS
-    let mut pv = ProgramVector::take();
+patch!("Midi Example", run);
 
+fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
 
     // allocate a working buffer (uses vec intenally)

@@ -4,17 +4,16 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use owl_patch::{
+    patch,
     program_vector::{heap_bytes_used, PatchParameterId, ProgramVector},
     sample_buffer::{Buffer, ConvertFrom, ConvertTo},
 };
 
 use fundsp::hacker32::*;
 
-#[no_mangle]
-pub extern "C" fn main() -> ! {
-    // The ProgramVector lets us talk to the OS
-    let mut pv = ProgramVector::take();
+patch!("FunDsp Example", run);
 
+fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
 
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames

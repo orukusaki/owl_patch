@@ -25,7 +25,11 @@ impl Parameters {
         register_patch_parameter: Option<unsafe extern "C" fn(id: u8, name: *const c_char)>,
         set_patch_parameter: Option<unsafe extern "C" fn(id: u8, value: i16)>,
         set_button: Option<unsafe extern "C" fn(id: u8, state: u16, samples: u16)>,
+        button_changed_callback: &mut Option<
+            unsafe extern "C" fn(bid: u8, state: u16, samples: u16),
+        >,
     ) -> Self {
+        *button_changed_callback = Some(button_changed);
         Self {
             parameters,
             buttons,

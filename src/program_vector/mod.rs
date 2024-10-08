@@ -1,7 +1,7 @@
 extern crate alloc;
 
 use core::{
-    ffi::CStr,
+    ffi::c_char,
     mem::MaybeUninit,
     slice,
     sync::atomic::{AtomicBool, Ordering},
@@ -15,8 +15,6 @@ mod audio;
 pub use audio::{AudioBuffers, AudioFormat, AudioSettings};
 
 mod parameters;
-// use midi::{midi_receive, Midi};
-use parameters::button_changed;
 pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
 
 mod messages;
@@ -30,7 +28,7 @@ mod meta;
 pub use meta::Meta;
 
 mod service_call;
-pub use service_call::{ServiceCall, SystemFunction};
+use service_call::{ServiceCall, SystemFunction};
 
 pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
 pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
@@ -53,12 +51,8 @@ pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 // in the binary by the linker script
 #[link_section = ".pv"]
 #[used]
-pub(crate) static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
+pub static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
 static TAKEN: AtomicBool = AtomicBool::new(false);
-
-// Safety: Adding the null byte guarantees a valid Cstr.
-static PATCH_NAME: &CStr =
-    unsafe { CStr::from_bytes_with_nul_unchecked(concat!(env!("PATCHNAME"), "\0").as_bytes()) };
 
 // Owned wrapper around the static ProgramVector instance
 pub struct ProgramVector {
@@ -67,6 +61,10 @@ pub struct ProgramVector {
     pub audio: AudioBuffers,
     pub service_call: ServiceCall,
     midi: Option<Midi>,
+}
+
+extern "Rust" {
+    fn __patch_name() -> *const c_char;
 }
 
 impl ProgramVector {
@@ -103,6 +101,13 @@ impl ProgramVector {
             });
         }
 
+        // Register the patch by calling the provided function in the pv. It seems like the channel counts
+        // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
+        // The only thing it really does is display the patch name on devices with a screen
+        if let Some(register_patch) = pv.registerPatch {
+            unsafe { register_patch(__patch_name(), 2, 2) };
+        }
+
         let (format, channels) = AudioFormat::parse(pv.audio_format);
         let audio_settings = AudioSettings {
             sample_rate: pv.audio_samplingrate as usize,
@@ -111,21 +116,14 @@ impl ProgramVector {
             format,
         };
 
-        pv.buttonChangedCallback = Some(button_changed);
         let parameters = Parameters::new(
             unsafe { slice::from_raw_parts(pv.parameters, pv.parameters_size as usize) },
             &pv.buttons,
             pv.registerPatchParameter,
             pv.setPatchParameter,
             pv.setButton,
+            &mut pv.buttonChangedCallback,
         );
-
-        // Register the patch by calling the provided function in the pv. It seems like the channel counts
-        // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
-        // The only thing it really does is display the patch name on devices with a screen
-        if let Some(register_patch) = pv.registerPatch {
-            unsafe { register_patch(PATCH_NAME.as_ptr(), 2, 2) };
-        }
 
         let audio = AudioBuffers::new(
             &pv.audio_input,
