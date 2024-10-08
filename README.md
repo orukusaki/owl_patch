@@ -110,18 +110,18 @@ Experimental. Will probabably always be that way.
 - Register, get, and set Patch Parameters, with callback for button events
 - Send & Receive Midi messages
 - Debug messages
+- Get i/o callibration data for volts-per-octave conversions
 
 ### Todo List:
 
-- Get i/o callibration data using `OWL_SERVICE_GET_PARAMETERS` service call
 - Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
 - Add support for display devices
 - Add example using `cmsis_dsp`
+- Get system log / pow tables
+- FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 
 ### Maybe pile:
 
-- Get system log / pow tables
-- FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 - Additional device support
   - Invert some params for `hardware_version == OWL_MODULAR_HARDWARE`
   - Support for lower checksum versions
