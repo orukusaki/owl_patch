@@ -86,7 +86,7 @@ cargo build --release
 
 7. Use `arm-none-eabi-objcopy` to get the final binary:
 ```bash
-arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/<your_patch> target/thumbv7em-none-eabihf/release/<your_patch>.bin
+arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/main target/thumbv7em-none-eabihf/release/main.bin
 ```
 
 8. Use `FirmwareSender` to upload the patch to your device.

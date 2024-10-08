@@ -12,7 +12,7 @@ use owl_patch::{
 use fundsp::hacker32::*;
 
 #[patch("FunDsp Example")]
-fn main(mut pv: ProgramVector) -> ! {
+fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
 
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
