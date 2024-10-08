@@ -5,6 +5,7 @@ extern crate alloc;
 use fundsp::shared::Shared;
 use owl_patch::{
     midi_message::MidiMessage,
+    patch,
     program_vector::{
         heap_bytes_used, Midi, Parameters, PatchButtonId, PatchParameterId, ProgramVector,
     },
@@ -18,9 +19,8 @@ const GATE_IN_A: PatchButtonId = PatchButtonId::BUTTON_1;
 const GATE_IN_B: PatchButtonId = PatchButtonId::BUTTON_2;
 const GATE_OUT: PatchButtonId = PatchButtonId::BUTTON_3;
 
-#[no_mangle]
-pub extern "C" fn main() -> ! {
-    let mut pv = ProgramVector::take();
+#[patch("Volts per octave")]
+fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
     let vpo = pv.volts_per_octave();
     let mut buffer: Buffer<f32, Channels, _> =
