@@ -12,8 +12,7 @@ use owl_patch::{
     sample_buffer::{Buffer, ConvertTo},
 };
 
-patch!("Midi Example", run);
-
+#[patch("Midi Example")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
 

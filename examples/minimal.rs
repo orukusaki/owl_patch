@@ -7,8 +7,7 @@ use owl_patch::{
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
 };
 
-patch!("Minimal", run);
-
+#[patch("Minimal")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
     // allocate a working buffer (uses vec intenally)

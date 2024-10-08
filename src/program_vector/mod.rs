@@ -1,11 +1,6 @@
 extern crate alloc;
 
-use core::{
-    ffi::c_char,
-    mem::MaybeUninit,
-    slice,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::slice;
 
 use crate::ffi::program_vector as ffi;
 
@@ -46,14 +41,6 @@ pub const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
 pub const AUDIO_FORMAT_FORMAT_MASK: u8 = ffi::AUDIO_FORMAT_FORMAT_MASK as u8;
 pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 
-// The Program Vector is how we communicate with the OS. It is initialised by the OS at runtime.
-// It is assigned to the special .pv section, and its address will be written to the program header block
-// in the binary by the linker script
-#[link_section = ".pv"]
-#[used]
-pub static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
-static TAKEN: AtomicBool = AtomicBool::new(false);
-
 // Owned wrapper around the static ProgramVector instance
 pub struct ProgramVector {
     pub parameters: Parameters,
@@ -63,21 +50,13 @@ pub struct ProgramVector {
     midi: Option<Midi>,
 }
 
-extern "Rust" {
-    fn __patch_name() -> *const c_char;
-}
-
 impl ProgramVector {
-    pub fn take() -> Self {
-        if TAKEN.swap(true, Ordering::Relaxed) {
-            panic!("program vector already taken");
-        }
-
-        // Safety: Our atomic flag means a 2nd call to this function will error, so there can never
-        // be more than one mut ref to PROGRAM_VECTOR
-        #[allow(static_mut_refs)]
-        let pv = unsafe { PROGRAM_VECTOR.assume_init_mut() };
-
+    /// # Safety
+    /// patch_name must be a valid pointer
+    pub unsafe fn new(
+        pv: &'static mut FfiProgramVector,
+        patch_name: *const core::ffi::c_char,
+    ) -> Self {
         Messages::init(&mut pv.message, &mut pv.error, pv.programStatus);
 
         // if the checksum is valid, then the vector was initialised
@@ -105,7 +84,7 @@ impl ProgramVector {
         // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
         // The only thing it really does is display the patch name on devices with a screen
         if let Some(register_patch) = pv.registerPatch {
-            unsafe { register_patch(__patch_name(), 2, 2) };
+            unsafe { register_patch(patch_name, 2, 2) };
         }
 
         let (format, channels) = AudioFormat::parse(pv.audio_format);
