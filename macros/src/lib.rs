@@ -1,5 +1,7 @@
 extern crate proc_macro;
 
+use std::ffi::CString;
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
@@ -45,7 +47,8 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
         _ => todo!(),
     };
 
-    let patch_name = parse_macro_input!(attr as LitStr).value();
+    let patch_name = CString::new(parse_macro_input!(attr as LitStr).value()).unwrap();
+    let name_len = patch_name.as_bytes_with_nul().len();
 
     let main_fn = &f.sig.ident;
 
@@ -62,9 +65,9 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
             static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
 
             #[link_section = ".program_header"]
-            static HEADER: ProgramHeader<{ #patch_name.len() + 1 }> =
+            static HEADER: ProgramHeader<{ #name_len }> =
                 ProgramHeader::new(
-                    const_str::to_byte_array!(concat!(#patch_name, "\0")),
+                    #patch_name,
                     &raw const PROGRAM_VECTOR,
                 );
 
