@@ -11,10 +11,10 @@ use owl_patch::{
 };
 
 
-#[patch("Example Patch")];
+#[patch("Example Patch")]
 fn main(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
-    let mut buffer: Buffer<f32, Channels> = Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer: Buffer<f32, Channels, _> = Buffer::new(audio_settings.channels, audio_settings.blocksize);
     pv.meta.set_heap_bytes_used(heap_bytes_used());
     pv.audio.run(|input, output| {
         buffer.convert_from(input);

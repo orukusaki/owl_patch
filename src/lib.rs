@@ -14,7 +14,7 @@ pub mod sample_buffer;
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{
-    ffi::{c_char, c_void},
+    ffi::{c_char, c_void, CStr},
     mem::MaybeUninit,
 };
 
@@ -50,7 +50,7 @@ impl<const N: usize> ProgramHeader<N> {
     const MAGIC_WORD: u32 = 0xdadac0de;
 
     pub const fn new(
-        patch_name: [u8; N],
+        patch_name: &CStr,
         programvector: *const MaybeUninit<FfiProgramVector>,
     ) -> Self {
         extern "C" {
@@ -58,6 +58,15 @@ impl<const N: usize> ProgramHeader<N> {
             static mut _endprog: c_void;
             static mut _stack: c_void;
             static mut _estack: c_void;
+        }
+
+        let mut name_bytes = [0u8; N];
+        let p = patch_name.to_bytes_with_nul();
+
+        let mut n = 0;
+        while n < N {
+            name_bytes[n] = p[n];
+            n += 1;
         }
 
         ProgramHeader {
@@ -68,7 +77,7 @@ impl<const N: usize> ProgramHeader<N> {
             stack: &raw const _stack,
             estack: &raw const _estack,
             programvector,
-            patch_name,
+            patch_name: name_bytes,
         }
     }
 

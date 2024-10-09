@@ -72,7 +72,7 @@ impl ProgramVector {
             &pv.heapLocations,
         );
 
-        #[cfg(feature = "talc")]
+        #[cfg(all(feature = "talc", not(test)))]
         {
             let mut talc = talc_heap::ALLOCATOR.lock();
             meta.memory_segments().iter().for_each(|seg| unsafe {
@@ -127,7 +127,7 @@ impl ProgramVector {
     }
 }
 
-#[cfg(feature = "talc")]
+#[cfg(all(feature = "talc", not(test)))]
 mod talc_heap {
     use talc::*;
 
@@ -147,5 +147,5 @@ mod talc_heap {
     }
 }
 
-#[cfg(feature = "talc")]
+#[cfg(all(feature = "talc", not(test)))]
 pub use talc_heap::heap_bytes_used;
