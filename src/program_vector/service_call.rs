@@ -53,7 +53,7 @@ pub struct ServiceCall {
 }
 
 impl ServiceCall {
-    pub fn new(
+    pub(crate) fn new(
         service_call: Option<
             unsafe extern "C" fn(service: c_int, params: *mut *mut c_void, len: c_int) -> c_int,
         >,

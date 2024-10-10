@@ -2,15 +2,19 @@
 #![feature(array_chunks)]
 #![feature(const_refs_to_static)]
 #![feature(slice_from_ptr_range)]
+#![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
 extern crate alloc;
 
-pub mod ffi;
+mod ffi;
 pub mod midi_message;
+
 pub mod program_vector;
 pub mod sample_buffer;
-
+pub use ffi::openware_midi_control::{
+    OpenWareMidiControl, OpenWareMidiSysexCommand, PatchButtonId, PatchParameterId,
+};
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{

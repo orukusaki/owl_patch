@@ -10,7 +10,6 @@ use owl_patch::{
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
 };
 
-
 #[patch("Example Patch")]
 fn main(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
