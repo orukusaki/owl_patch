@@ -5,15 +5,16 @@ extern crate alloc;
 use alloc::boxed::Box;
 use owl_patch::{
     patch,
-    program_vector::{heap_bytes_used, PatchParameterId, ProgramVector},
+    program_vector::{heap_bytes_used, ProgramVector},
     sample_buffer::{Buffer, ConvertFrom, ConvertTo},
+    PatchParameterId,
 };
 
 use fundsp::hacker32::*;
 
 #[patch("FunDsp Example")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio.settings;
+    let audio_settings = pv.audio().settings;
 
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
     let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
@@ -32,15 +33,15 @@ fn run(mut pv: ProgramVector) -> ! {
     unit.set_sample_rate(audio_settings.sample_rate as f64);
 
     // Set up input parameters
-    let parameters = pv.parameters;
+    let parameters = pv.parameters();
     parameters.register(PatchParameterId::PARAMETER_A, "Center");
     parameters.register(PatchParameterId::PARAMETER_B, "Res");
     parameters.register(PatchParameterId::PARAMETER_C, "Split");
 
     // For correct reporting, this should be called after all heap allocations are done with.
-    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.meta().set_heap_bytes_used(heap_bytes_used());
 
-    pv.audio.run(|input, output| {
+    pv.audio().run(|input, output| {
         let param_a = parameters.get(PatchParameterId::PARAMETER_A);
         let centre = param_a * param_a * 20000.0;
         let res = 0.3 + (parameters.get(PatchParameterId::PARAMETER_B) * 30.0);

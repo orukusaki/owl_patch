@@ -2,7 +2,7 @@ use core::slice;
 
 use alloc::boxed::Box;
 
-use crate::sample_buffer::{Buffer, ConvertFrom, Interleaved, Samplei32, Samplew16};
+use crate::sample_buffer::{Buffer, ConvertFrom, Interleaved};
 
 use super::{
     AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
@@ -39,6 +39,42 @@ impl AudioFormat {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+#[repr(transparent)]
+struct Samplew16(i32);
+
+// The C code for 24B16 reads two 16 bit words and swaps them over to create a 32 bit value. I *think* that the codec is
+// actually operating in 16 bit mode though, so here we're just doing a 16 bit shift instead.
+// The C code for 24B32 does an 8 bit shift, I'm fairly certain it is actually 24 bit.
+
+impl ConvertFrom<i32> for Samplew16 {
+    fn convert_from(&mut self, value: i32) {
+        self.0 = value >> 16
+    }
+}
+
+impl ConvertFrom<Samplew16> for i32 {
+    fn convert_from(&mut self, value: Samplew16) {
+        *self = value.0 << 16;
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+#[repr(transparent)]
+struct Samplei32(i32);
+
+impl ConvertFrom<i32> for Samplei32 {
+    fn convert_from(&mut self, value: i32) {
+        self.0 = value >> 8;
+    }
+}
+
+impl ConvertFrom<Samplei32> for i32 {
+    fn convert_from(&mut self, value: Samplei32) {
+        *self = value.0 << 8;
+    }
+}
+
 pub struct AudioBuffers {
     input: &'static *mut i32,
     output: &'static *mut i32,
@@ -49,7 +85,7 @@ pub struct AudioBuffers {
 }
 
 impl AudioBuffers {
-    pub fn new(
+    pub(crate) fn new(
         input: &'static *mut i32,
         output: &'static *mut i32,
 

@@ -3,6 +3,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 #![allow(clippy::upper_case_acronyms)]
+#![allow(missing_docs)]
 
 pub mod midi_message {
     include!(concat!(env!("OUT_DIR"), "/midi_message.rs"));

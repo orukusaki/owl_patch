@@ -11,7 +11,9 @@ use core::{
 use alloc::{boxed::Box, vec::Vec};
 use num_traits::{MulAdd, MulAddAssign};
 
+/// Sample / Buffer conversion trait
 pub trait ConvertFrom<T: ?Sized> {
+    /// Read from `other`, converting into the correct format
     fn convert_from(&mut self, other: T);
 }
 
@@ -21,10 +23,13 @@ impl<T> ConvertFrom<T> for T {
     }
 }
 
+/// Sample / Buffer conversion trait
 pub trait ConvertTo<T> {
+    /// Write to `other`, converting into the correct format
     fn convert_to(&self, other: &mut T);
 }
 
+/// Auto implementation
 impl<B, T> ConvertTo<T> for B
 where
     for<'a> T: ConvertFrom<&'a B>,
@@ -34,43 +39,8 @@ where
     }
 }
 
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct Samplew16(i32);
-
-// The C code for 24B16 reads two 16 bit words and swaps them over to create a 32 bit value. I *think* that the codec is
-// actually operating in 16 bit mode though, so here we're just doing a 16 bit shift instead.
-// The C code for 24B32 does an 8 bit shift, I'm fairly certain it is actually 24 bit.
-
-impl ConvertFrom<i32> for Samplew16 {
-    fn convert_from(&mut self, value: i32) {
-        self.0 = value >> 16
-    }
-}
-
-impl ConvertFrom<Samplew16> for i32 {
-    fn convert_from(&mut self, value: Samplew16) {
-        *self = value.0 << 16;
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct Samplei32(i32);
-
-impl ConvertFrom<i32> for Samplei32 {
-    fn convert_from(&mut self, value: i32) {
-        self.0 = value >> 8;
-    }
-}
-
-impl ConvertFrom<Samplei32> for i32 {
-    fn convert_from(&mut self, value: Samplei32) {
-        *self = value.0 << 8;
-    }
-}
-
 impl ConvertFrom<i32> for f32 {
+    /// Convertion to float, so that i32::MAX => 1.0 and i32::MIN => -1.0
     fn convert_from(&mut self, other: i32) {
         const MUL: f32 = 1.0 / (0x80000000i64 as f32);
         *self = other as f32 * MUL
@@ -78,6 +48,7 @@ impl ConvertFrom<i32> for f32 {
 }
 
 impl ConvertFrom<f32> for i32 {
+    /// Convertion from float, so that 1.0 => i32::MAX and -1.0 => i32::MIN
     fn convert_from(&mut self, other: f32) {
         const MUL: f32 = 0x80000000i64 as f32;
         *self = (other * MUL) as i32
@@ -87,6 +58,7 @@ impl ConvertFrom<f32> for i32 {
 /// Marker trait to indicate how samples are stored in a buffer
 pub trait SampleStorage {}
 
+/// Samples all from a single channel
 pub struct Mono;
 impl SampleStorage for Mono {}
 
@@ -100,6 +72,7 @@ impl SampleStorage for Channels {}
 pub struct Interleaved;
 impl SampleStorage for Interleaved {}
 
+/// Sample buffer
 pub struct Buffer<F, S: SampleStorage, T> {
     samples: T,
     channels: usize,
@@ -108,22 +81,8 @@ pub struct Buffer<F, S: SampleStorage, T> {
     _format: PhantomData<F>,
 }
 
-impl<F, S: SampleStorage, T: AsRef<[F]>> Buffer<F, S, T> {
-    /// Get a reference to all samples in the buffer
-    /// Whether they are interleaved or not depends on the buffer's type
-    pub fn samples(&self) -> &[F] {
-        self.samples.as_ref()
-    }
-}
-impl<F, S: SampleStorage, T: AsMut<[F]>> Buffer<F, S, T> {
-    /// Get a mutable reference to all samples in the buffer
-    /// Whether they are interleaved or not depends on the buffer's type
-    pub fn samples_mut(&mut self) -> &mut [F] {
-        self.samples.as_mut()
-    }
-}
-
 impl<F: Default + Clone> Buffer<F, Mono, Box<[F]>> {
+    /// Create a new mono buffer, with owned samples (allocates)
     pub fn new_mono(blocksize: usize) -> Self {
         let mut samples = Vec::with_capacity(blocksize);
 
@@ -139,48 +98,8 @@ impl<F: Default + Clone> Buffer<F, Mono, Box<[F]>> {
     }
 }
 
-impl<F, T: AsRef<[F]>> Buffer<F, Mono, T> {
-    pub fn mono_ref(samples: T) -> Self {
-        let len = samples.as_ref().len();
-        Self {
-            samples,
-            channels: 1,
-            blocksize: len,
-            _storage: PhantomData,
-            _format: PhantomData,
-        }
-    }
-}
-
-impl<F, T: AsRef<[F]>> Deref for Buffer<F, Mono, T> {
-    type Target = [F];
-
-    fn deref(&self) -> &Self::Target {
-        self.samples()
-    }
-}
-
-impl<F, T: AsRef<[F]> + AsMut<[F]>> DerefMut for Buffer<F, Mono, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.samples_mut()
-    }
-}
-
-impl<F, T: AsMut<[F]> + AsRef<[F]>> Buffer<F, Mono, T> {
-    pub fn mono_mut(samples: T) -> Self {
-        let len = samples.as_ref().len();
-        Self {
-            samples,
-            channels: 1,
-            blocksize: len,
-            _storage: PhantomData,
-            _format: PhantomData,
-        }
-    }
-}
-
 impl<F: Default + Clone, S: SampleStorage> Buffer<F, S, Box<[F]>> {
-    /// Create a new buffer, allocating a boxed slice to hole sample data
+    /// Create a new buffer, allocating a boxed slice to hold sample data
     pub fn new(channels: usize, blocksize: usize) -> Self {
         let len = channels * blocksize;
         let mut samples = Vec::with_capacity(len);
@@ -225,6 +144,64 @@ impl<'a, F, S: SampleStorage> Buffer<F, S, &'a mut [F]> {
     }
 }
 
+impl<F, T: AsRef<[F]>> Buffer<F, Mono, T> {
+    /// Create a new mono buffer with borrowed samples
+    pub fn mono_ref(samples: T) -> Self {
+        let len = samples.as_ref().len();
+        Self {
+            samples,
+            channels: 1,
+            blocksize: len,
+            _storage: PhantomData,
+            _format: PhantomData,
+        }
+    }
+}
+
+impl<F, T: AsMut<[F]> + AsRef<[F]>> Buffer<F, Mono, T> {
+    /// Create a new mono buffer with mutably borrowed samples
+    pub fn mono_mut(samples: T) -> Self {
+        let len = samples.as_ref().len();
+        Self {
+            samples,
+            channels: 1,
+            blocksize: len,
+            _storage: PhantomData,
+            _format: PhantomData,
+        }
+    }
+}
+
+impl<F, S: SampleStorage, T: AsRef<[F]>> Buffer<F, S, T> {
+    /// Get a reference to all samples in the buffer
+    /// Whether they are interleaved or not depends on the buffer's type
+    pub fn samples(&self) -> &[F] {
+        self.samples.as_ref()
+    }
+}
+
+impl<F, S: SampleStorage, T: AsMut<[F]>> Buffer<F, S, T> {
+    /// Get a mutable reference to all samples in the buffer
+    /// Whether they are interleaved or not depends on the buffer's type
+    pub fn samples_mut(&mut self) -> &mut [F] {
+        self.samples.as_mut()
+    }
+}
+
+impl<F, T: AsRef<[F]>> Deref for Buffer<F, Mono, T> {
+    type Target = [F];
+
+    fn deref(&self) -> &Self::Target {
+        self.samples()
+    }
+}
+
+impl<F, T: AsRef<[F]> + AsMut<[F]>> DerefMut for Buffer<F, Mono, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.samples_mut()
+    }
+}
+
 impl<F, T: AsRef<[F]>> Buffer<F, Interleaved, T> {
     /// Get an iterator over the samples for each frame
     pub fn frames(&self) -> impl Iterator<Item = &[F]> {
@@ -247,10 +224,12 @@ impl<F, T: AsRef<[F]>> Buffer<F, Channels, T> {
             .map(|chunk| Buffer::mono_ref(chunk))
     }
 
+    /// Get the samples in the left channel as a readonly mono buffer
     pub fn left(&self) -> Option<Buffer<F, Mono, &[F]>> {
         self.channels().take(1).next()
     }
 
+    /// Get the samples in the right channel as a readonly mono buffer
     pub fn right(&self) -> Option<Buffer<F, Mono, &[F]>> {
         self.channels().skip(1).take(1).next()
     }
@@ -265,10 +244,12 @@ impl<F, T: AsMut<[F]>> Buffer<F, Channels, T> {
             .map(|chunk| Buffer::mono_mut(chunk))
     }
 
+    /// Get the samples in the left channel as a mutable mono buffer
     pub fn left_mut(&mut self) -> Option<Buffer<F, Mono, &mut [F]>> {
         self.channels_mut().take(1).next()
     }
 
+    /// Get the samples in the right channel as a mutable mono buffer
     pub fn right_mut(&mut self) -> Option<Buffer<F, Mono, &mut [F]>> {
         self.channels_mut().skip(1).take(1).next()
     }

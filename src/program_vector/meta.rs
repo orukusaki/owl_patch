@@ -11,7 +11,7 @@ pub struct Meta {
 }
 
 impl Meta {
-    pub fn new(
+    pub(crate) fn new(
         cycles_per_block: &'static u32,
         heap_bytes_used: &'static mut u32,
         checksum: &'static u8,

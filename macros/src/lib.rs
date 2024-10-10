@@ -56,13 +56,9 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
         mod __header {
 
             use core::mem::MaybeUninit;
-            use owl_patch::ffi::program_vector::ProgramVector as FfiProgramVector;
             use owl_patch::ProgramHeader;
 
-            // The Program Vector is how we communicate with the OS. It is initialised by the OS just before runtime.
-            // It is assigned to the special .pv section, and its address will be written to the program header block
-            #[link_section = ".pv"]
-            static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
+            use owl_patch::program_vector::PROGRAM_VECTOR;
 
             #[link_section = ".program_header"]
             static HEADER: ProgramHeader<{ #name_len }> =

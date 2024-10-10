@@ -14,7 +14,7 @@ pub struct Midi {
     send_callback: Option<extern "C" fn(u8, u8, u8, u8)>,
 }
 impl Midi {
-    pub fn init(service_call: &mut ServiceCall) -> Self {
+    pub(crate) fn init(service_call: &mut ServiceCall) -> Self {
         let _ = service_call
             .register_callback(SystemFunction::SystemFunctionMidi, midi_receive as *mut _);
 
@@ -31,7 +31,7 @@ impl Midi {
         Self::new(send_callback)
     }
 
-    pub fn new(send_callback: Option<extern "C" fn(u8, u8, u8, u8)>) -> Self {
+    pub(crate) fn new(send_callback: Option<extern "C" fn(u8, u8, u8, u8)>) -> Self {
         Self { send_callback }
     }
 

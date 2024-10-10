@@ -1,3 +1,4 @@
+//! Simple midi message implementation, ported directly from <https://github.com/RebelTechnology/OwlProgram/blob/develop/LibSource/MidiMessage.h>
 use crate::ffi::midi_message as ffi;
 
 const MIDI_CHANNEL_MASK: u8 = ffi::MIDI_CHANNEL_MASK as u8;
@@ -33,6 +34,7 @@ pub struct MidiMessage {
 }
 
 impl MidiMessage {
+    /// Create a new message from raw bytes
     pub fn new(port: u8, d0: u8, d1: u8, d2: u8) -> Self {
         Self { port, d0, d1, d2 }
     }
@@ -93,18 +95,22 @@ impl MidiMessage {
         Self::new(USB_COMMAND_NOTE_OFF, NOTE_OFF | (ch & 0xf), note & 0x7f, 0)
     }
 
+    /// Midi port number
     pub fn port(&self) -> u8 {
         self.port >> 4
     }
 
+    /// Midi channel number
     pub fn channel(&self) -> u8 {
         self.d0 & MIDI_CHANNEL_MASK
     }
 
+    /// Status part of the first message byte
     pub fn status(&self) -> u8 {
         self.d0 & MIDI_STATUS_MASK
     }
 
+    /// Byte count of the message
     pub fn size(&self) -> u8 {
         match self.port & 0x0f {
             USB_COMMAND_SINGLE_BYTE | USB_COMMAND_SYSEX_EOX1 => 1,
@@ -124,53 +130,65 @@ impl MidiMessage {
         }
     }
 
+    /// Midi note value (valid when is_note() == true)
     pub fn note(&self) -> u8 {
         self.d1
     }
 
+    /// Midi note velocity (valid when is_note() == true)
     pub fn velocity(&self) -> u8 {
         self.d2
     }
 
+    /// Midi controller number (valid when is_control_change() == true)
     pub fn controller_number(&self) -> u8 {
         self.d1
     }
 
+    /// Midi controller value (valid when is_control_change() == true)
     pub fn controller_value(&self) -> u8 {
         self.d2
     }
 
+    /// Midi channel pressure (valid when is_channel_pressure() == true)
     pub fn channel_pressure(&self) -> u8 {
         self.d1
     }
 
+    /// Poly Key Pressure
     pub fn poly_key_pressure(&self) -> u8 {
         self.d2
     }
 
+    /// Program Change
     pub fn program_change(&self) -> u8 {
         self.d0
     }
 
+    /// Pitch bend value
     pub fn pitch_bend(&self) -> u8 {
         let pb: u16 = (self.d1 as u16 | ((self.d2 as u16) << 7)) - 8192;
 
         pb as u8
     }
 
+    /// Either a note-on or note-off message
     pub fn is_note(&self) -> bool {
         self.is_note_on() | self.is_note_off()
     }
 
+    /// Checks the first byte for 0x90
     pub fn is_note_on(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK == NOTE_ON) && self.velocity() != 0
     }
 
+    /// Checks the first byte for 0x80
     pub fn is_note_off(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK == NOTE_OFF)
             || ((self.d0 & MIDI_STATUS_MASK == NOTE_ON) && self.velocity() == 0)
     }
 
+    /// Is this a sysex message?
     pub fn is_sys_ex(&self) -> bool {
         matches!(
             self.port,
@@ -181,26 +199,32 @@ impl MidiMessage {
         )
     }
 
+    /// Is this a control change message?
     pub fn is_control_change(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK) == CONTROL_CHANGE
     }
 
+    /// Is this a program change message?
     pub fn is_program_change(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK) == PROGRAM_CHANGE
     }
 
+    /// Is this a channel pressure message?
     pub fn is_channel_pressure(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK) == CHANNEL_PRESSURE
     }
 
+    /// Is this a poly key pressure message?
     pub fn is_poly_key_pressure(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK) == POLY_KEY_PRESSURE
     }
 
+    /// Is this a pitch bend message?
     pub fn is_pitch_bend(&self) -> bool {
         (self.d0 & MIDI_STATUS_MASK) == PITCH_BEND_CHANGE
     }
 
+    /// Raw bytes of message
     pub fn as_bytes(self) -> [u8; 4] {
         [self.port, self.d0, self.d1, self.d2]
     }
