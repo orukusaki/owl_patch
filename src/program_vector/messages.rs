@@ -66,12 +66,14 @@ impl Messages {
     }
 }
 
+/// Publish a debug message. Messages will be truncated to 63 chars
 pub fn debug_message(message: &str) {
     if let Some(instance) = INSTANCE.lock().get_mut() {
         instance.debug_message(message)
     }
 }
 
+/// Publish an unrecoverable error - will not return
 pub fn error(message: &str) -> ! {
     if let Some(instance) = INSTANCE.lock().get_mut() {
         instance.error(message);

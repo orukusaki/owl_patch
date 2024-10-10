@@ -14,7 +14,7 @@ use owl_patch::{
 
 #[patch("Midi Example")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio.settings;
+    let audio_settings = pv.audio().settings;
 
     // allocate a working buffer (uses vec intenally)
     let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
@@ -35,10 +35,10 @@ fn run(mut pv: ProgramVector) -> ! {
     });
 
     // For correct reporting, this should be called after all heap allocations are done with.
-    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.meta().set_heap_bytes_used(heap_bytes_used());
 
     // Main audio loop
-    pv.audio.run(|_input, output| {
+    pv.audio().run(|_input, output| {
         for frame in buffer.frames_mut() {
             let sample = osc.next();
 
