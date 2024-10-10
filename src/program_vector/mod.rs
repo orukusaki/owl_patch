@@ -12,7 +12,7 @@ use audio::AudioFormat;
 pub use audio::{AudioBuffers, AudioSettings};
 
 mod parameters;
-use parameters::Parameters;
+pub use parameters::Parameters;
 
 mod messages;
 use messages::Messages;
