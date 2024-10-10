@@ -1,6 +1,7 @@
+//! Communication with the Host OS
 extern crate alloc;
 
-use core::{mem::MaybeUninit, slice};
+use core::slice;
 
 use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerOctave};
 
@@ -21,7 +22,7 @@ mod midi;
 pub use midi::Midi;
 
 mod meta;
-pub use meta::Meta;
+pub use meta::*;
 
 mod service_call;
 pub use service_call::DeviceParameters;
@@ -48,9 +49,11 @@ pub struct ProgramVector {
     volts_per_octave: Option<VoltsPerOctave>,
 }
 
+#[cfg(not(any(test, doctest, docsrs)))]
 #[doc(hidden)]
 #[link_section = ".pv"]
-pub static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
+pub static mut PROGRAM_VECTOR: core::mem::MaybeUninit<FfiProgramVector> =
+    core::mem::MaybeUninit::uninit();
 
 impl ProgramVector {
     /// Create a new ProgramVector instance
