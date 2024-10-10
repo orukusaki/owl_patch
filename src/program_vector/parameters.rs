@@ -19,7 +19,7 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new(
+    pub(crate) fn new(
         parameters: &'static [i16],
         buttons: &'static u16,
         register_patch_parameter: Option<unsafe extern "C" fn(id: u8, name: *const c_char)>,

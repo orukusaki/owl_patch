@@ -1,5 +1,7 @@
 extern crate proc_macro;
 
+use std::ffi::CString;
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
@@ -45,7 +47,8 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
         _ => todo!(),
     };
 
-    let patch_name = parse_macro_input!(attr as LitStr).value();
+    let patch_name = CString::new(parse_macro_input!(attr as LitStr).value()).unwrap();
+    let name_len = patch_name.as_bytes_with_nul().len();
 
     let main_fn = &f.sig.ident;
 
@@ -53,18 +56,14 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
         mod __header {
 
             use core::mem::MaybeUninit;
-            use owl_patch::ffi::program_vector::ProgramVector as FfiProgramVector;
             use owl_patch::ProgramHeader;
 
-            // The Program Vector is how we communicate with the OS. It is initialised by the OS just before runtime.
-            // It is assigned to the special .pv section, and its address will be written to the program header block
-            #[link_section = ".pv"]
-            static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
+            use owl_patch::program_vector::PROGRAM_VECTOR;
 
             #[link_section = ".program_header"]
-            static HEADER: ProgramHeader<{ #patch_name.len() + 1 }> =
+            static HEADER: ProgramHeader<{ #name_len }> =
                 ProgramHeader::new(
-                    const_str::to_byte_array!(concat!(#patch_name, "\0")),
+                    #patch_name,
                     &raw const PROGRAM_VECTOR,
                 );
 

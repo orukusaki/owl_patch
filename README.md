@@ -3,20 +3,22 @@ Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](
 ```rust
 #![no_main]
 #![no_std]
-
+extern crate alloc;
+use alloc::boxed::Box;
 use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
 };
 
-
-#[patch("Example Patch")];
+#[patch("Example Patch")]
 fn main(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio.settings;
-    let mut buffer: Buffer<f32, Channels> = Buffer::new(audio_settings.channels, audio_settings.blocksize);
-    pv.meta.set_heap_bytes_used(heap_bytes_used());
-    pv.audio.run(|input, output| {
+    let audio_settings = pv.audio().settings;
+    let mut buffer: Buffer<Channels, Box<[f32]>> =
+        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+        
+    pv.meta().set_heap_bytes_used(heap_bytes_used());
+    pv.audio().run(|input, output| {
         buffer.convert_from(input);
         // Do something clever with the samples in the buffer
         buffer.convert_to(output);

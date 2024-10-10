@@ -2,17 +2,22 @@ use core::slice;
 
 use alloc::boxed::Box;
 
-use crate::sample_buffer::{Buffer, ConvertFrom, Interleaved, Samplei32, Samplew16};
+use crate::sample_buffer::{Buffer, ConvertFrom, Interleaved};
 
 use super::{
     AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
 };
 
+/// Current audio settings (set by the os / device)
 #[derive(Clone, Copy)]
 pub struct AudioSettings {
+    /// sample rate in Hz
     pub sample_rate: usize,
+    /// block size (per channel)
     pub blocksize: usize,
+    /// channel count (in == out)
     pub channels: usize,
+    /// Sample format
     pub format: AudioFormat,
 }
 
@@ -39,28 +44,63 @@ impl AudioFormat {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+#[repr(transparent)]
+struct Samplew16(i32);
+
+// The C code for 24B16 reads two 16 bit words and swaps them over to create a 32 bit value. I *think* that the codec is
+// actually operating in 16 bit mode though, so here we're just doing a 16 bit shift instead.
+// The C code for 24B32 does an 8 bit shift, I'm fairly certain it is actually 24 bit.
+
+impl ConvertFrom<i32> for Samplew16 {
+    fn convert_from(&mut self, value: i32) {
+        self.0 = value >> 16
+    }
+}
+
+impl ConvertFrom<Samplew16> for i32 {
+    fn convert_from(&mut self, value: Samplew16) {
+        *self = value.0 << 16;
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+#[repr(transparent)]
+struct Samplei32(i32);
+
+impl ConvertFrom<i32> for Samplei32 {
+    fn convert_from(&mut self, value: i32) {
+        self.0 = value >> 8;
+    }
+}
+
+impl ConvertFrom<Samplei32> for i32 {
+    fn convert_from(&mut self, value: Samplei32) {
+        *self = value.0 << 8;
+    }
+}
+
+/// Container for the input and output audio buffers
 pub struct AudioBuffers {
     input: &'static *mut i32,
     output: &'static *mut i32,
+    /// Current audio settings (set by the os / device)
     pub settings: AudioSettings,
     program_ready: Option<unsafe extern "C" fn()>,
-    input_buffer: Buffer<i32, Interleaved, Box<[i32]>>,
-    output_buffer: Buffer<i32, Interleaved, Box<[i32]>>,
+    input_buffer: Buffer<Interleaved, Box<[i32]>>,
+    output_buffer: Buffer<Interleaved, Box<[i32]>>,
 }
 
 impl AudioBuffers {
-    pub fn new(
+    pub(crate) fn new(
         input: &'static *mut i32,
         output: &'static *mut i32,
 
         settings: AudioSettings,
         program_ready: Option<unsafe extern "C" fn()>,
     ) -> Self {
-        let input_buffer =
-            Buffer::<i32, Interleaved, _>::new(settings.channels, settings.blocksize);
-
-        let output_buffer =
-            Buffer::<i32, Interleaved, _>::new(settings.channels, settings.blocksize);
+        let input_buffer = Buffer::<Interleaved, _>::new(settings.channels, settings.blocksize);
+        let output_buffer = Buffer::<Interleaved, _>::new(settings.channels, settings.blocksize);
 
         Self {
             input,
@@ -72,9 +112,18 @@ impl AudioBuffers {
         }
     }
 
+    /// Start processing audio samples
+    ///
+    /// Supply a closure which will be run for each audio block as it is received.  The closure will have access to
+    /// an input and output buffer.  The number of channels depends on [self.settings.channels].  The buffers are invalidated after
+    /// each block, so must not escape the closure.
+    ///
+    /// This function never terminates.
+    ///
+    /// [self.settings.channels]: AudioSettings
     pub fn run(
         &mut self,
-        f: impl FnMut(&Buffer<i32, Interleaved, Box<[i32]>>, &mut Buffer<i32, Interleaved, Box<[i32]>>),
+        f: impl FnMut(&Buffer<Interleaved, Box<[i32]>>, &mut Buffer<Interleaved, Box<[i32]>>),
     ) -> ! {
         match self.settings.format {
             AudioFormat::Format24B16 => self.run_with_format::<Samplew16>(f),
@@ -84,10 +133,7 @@ impl AudioBuffers {
 
     fn run_with_format<F>(
         &mut self,
-        mut f: impl FnMut(
-            &Buffer<i32, Interleaved, Box<[i32]>>,
-            &mut Buffer<i32, Interleaved, Box<[i32]>>,
-        ),
+        mut f: impl FnMut(&Buffer<Interleaved, Box<[i32]>>, &mut Buffer<Interleaved, Box<[i32]>>),
     ) -> !
     where
         i32: ConvertFrom<F>,

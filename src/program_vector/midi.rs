@@ -9,12 +9,17 @@ use crate::midi_message::MidiMessage;
 
 use super::{ServiceCall, SystemFunction};
 
+/// Send & receive midi messages
+///
+/// Use [ProgramVector::midi()] to obtain the interface. It can then be copied to any parts of your patch that need it.
+///
+/// [ProgramVector::midi()]: crate::program_vector::ProgramVector::midi
 #[derive(Clone, Copy)]
 pub struct Midi {
     send_callback: Option<extern "C" fn(u8, u8, u8, u8)>,
 }
 impl Midi {
-    pub fn init(service_call: &mut ServiceCall) -> Self {
+    pub(crate) fn init(service_call: &mut ServiceCall) -> Self {
         let _ = service_call
             .register_callback(SystemFunction::SystemFunctionMidi, midi_receive as *mut _);
 
@@ -31,10 +36,11 @@ impl Midi {
         Self::new(send_callback)
     }
 
-    pub fn new(send_callback: Option<extern "C" fn(u8, u8, u8, u8)>) -> Self {
+    pub(crate) fn new(send_callback: Option<extern "C" fn(u8, u8, u8, u8)>) -> Self {
         Self { send_callback }
     }
 
+    /// Register a callback which is fired whenever a midi message is received
     pub fn on_receive(&self, callback: impl FnMut(MidiMessage) + Send + 'static) {
         RECEIVE_CALLBACK
             .lock()
@@ -42,6 +48,7 @@ impl Midi {
             .replace(Box::new(callback));
     }
 
+    /// Send a midi message
     pub fn send(&self, message: MidiMessage) {
         if let Some(f) = self.send_callback {
             let bytes = message.as_bytes();

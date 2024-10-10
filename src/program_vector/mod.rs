@@ -1,3 +1,4 @@
+//! Communication with the Host OS
 extern crate alloc;
 
 use core::slice;
@@ -7,10 +8,11 @@ use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerOctave};
 use ffi::ProgramVector as FfiProgramVector;
 
 mod audio;
-pub use audio::{AudioBuffers, AudioFormat, AudioSettings};
+use audio::AudioFormat;
+pub use audio::{AudioBuffers, AudioSettings};
 
 mod parameters;
-pub use parameters::{Parameters, PatchButtonId, PatchParameterId};
+use parameters::Parameters;
 
 mod messages;
 use messages::Messages;
@@ -20,41 +22,46 @@ mod midi;
 pub use midi::Midi;
 
 mod meta;
-pub use meta::Meta;
+pub use meta::*;
 
 mod service_call;
 pub use service_call::DeviceParameters;
 use service_call::{ServiceCall, SystemFunction};
 
-pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
-pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
-pub const OWL_RACK_HARDWARE: u8 = ffi::OWL_RACK_HARDWARE as u8;
-pub const PRISM_HARDWARE: u8 = ffi::PRISM_HARDWARE as u8;
-pub const PLAYER_HARDWARE: u8 = ffi::PLAYER_HARDWARE as u8;
-pub const PROGRAM_VECTOR_CHECKSUM_V11: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V11 as u8;
-pub const PROGRAM_VECTOR_CHECKSUM_V12: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V12 as u8;
-pub const PROGRAM_VECTOR_CHECKSUM_V13: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V13 as u8;
-pub const CHECKSUM_ERROR_STATUS: i8 = ffi::CHECKSUM_ERROR_STATUS as i8;
-pub const OUT_OF_MEMORY_ERROR_STATUS: i8 = ffi::OUT_OF_MEMORY_ERROR_STATUS as i8;
-pub const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
-pub const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
-pub const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
-pub const AUDIO_FORMAT_FORMAT_MASK: u8 = ffi::AUDIO_FORMAT_FORMAT_MASK as u8;
-pub const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
+const PROGRAM_VECTOR_CHECKSUM_V13: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V13 as u8;
+const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
+const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
+const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
+const AUDIO_FORMAT_FORMAT_MASK: u8 = ffi::AUDIO_FORMAT_FORMAT_MASK as u8;
+const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 
-// Owned wrapper around the static ProgramVector instance
+/// Shared object used to communicate with the host OS
+///
+/// You should not try to create it directly, use the [#\[patch\]] attribute macro instead.
+///
+/// [#\[patch\]]: crate::patch
 pub struct ProgramVector {
-    pub parameters: Parameters,
-    pub meta: Meta,
-    pub audio: AudioBuffers,
-    pub service_call: ServiceCall,
+    meta: Meta,
+    audio: AudioBuffers,
+    parameters: Parameters,
+    service_call: ServiceCall,
     midi: Option<Midi>,
     volts_per_octave: Option<VoltsPerOctave>,
 }
 
+#[cfg(not(any(test, doctest, docsrs)))]
+#[doc(hidden)]
+#[link_section = ".pv"]
+pub static mut PROGRAM_VECTOR: core::mem::MaybeUninit<FfiProgramVector> =
+    core::mem::MaybeUninit::uninit();
+
 impl ProgramVector {
+    /// Create a new ProgramVector instance
+    ///
+    /// You should not call this directly, use the `#[patch]` attribute macro instead
     /// # Safety
     /// patch_name must be a valid pointer
+    #[doc(hidden)]
     pub unsafe fn new(
         pv: &'static mut FfiProgramVector,
         patch_name: *const core::ffi::c_char,
@@ -74,7 +81,7 @@ impl ProgramVector {
             &pv.heapLocations,
         );
 
-        #[cfg(feature = "talc")]
+        #[cfg(all(feature = "talc", not(test)))]
         {
             let mut talc = talc_heap::ALLOCATOR.lock();
             meta.memory_segments().iter().for_each(|seg| unsafe {
@@ -123,12 +130,29 @@ impl ProgramVector {
         }
     }
 
+    /// Get midi send/receive interface
     pub fn midi(&mut self) -> Midi {
         *self
             .midi
             .get_or_insert_with(|| Midi::init(&mut self.service_call))
     }
 
+    /// Get patch parameter controller
+    pub fn parameters(&mut self) -> Parameters {
+        self.parameters
+    }
+
+    /// Get patch metadata
+    pub fn meta(&mut self) -> &mut Meta {
+        &mut self.meta
+    }
+
+    /// Get audio buffers
+    pub fn audio(&mut self) -> &mut AudioBuffers {
+        &mut self.audio
+    }
+
+    /// Get calibrated volts per octave convertor
     pub fn volts_per_octave(&mut self) -> VoltsPerOctave {
         *self
             .volts_per_octave
@@ -136,7 +160,7 @@ impl ProgramVector {
     }
 }
 
-#[cfg(feature = "talc")]
+#[cfg(all(feature = "talc", not(test)))]
 mod talc_heap {
     use talc::*;
 
@@ -151,10 +175,11 @@ mod talc_heap {
     #[global_allocator]
     pub static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
 
+    /// get total bytes allocated at present
     pub fn heap_bytes_used() -> usize {
         ALLOCATOR.lock().get_counters().total_allocated_bytes as usize
     }
 }
 
-#[cfg(feature = "talc")]
+#[cfg(all(feature = "talc", not(test)))]
 pub use talc_heap::heap_bytes_used;
