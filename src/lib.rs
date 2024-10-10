@@ -2,7 +2,6 @@
 #![feature(array_chunks)]
 #![feature(const_refs_to_static)]
 #![feature(slice_from_ptr_range)]
-#![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
 extern crate alloc;
