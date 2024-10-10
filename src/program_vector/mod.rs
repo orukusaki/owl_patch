@@ -1,6 +1,7 @@
+//! Communication with the Host OS
 extern crate alloc;
 
-use core::{mem::MaybeUninit, slice};
+use core::slice;
 
 use crate::ffi::program_vector as ffi;
 
@@ -21,7 +22,7 @@ mod midi;
 pub use midi::Midi;
 
 mod meta;
-pub use meta::Meta;
+pub use meta::*;
 
 mod service_call;
 use service_call::{ServiceCall, SystemFunction};
@@ -46,9 +47,11 @@ pub struct ProgramVector {
     midi: Option<Midi>,
 }
 
+#[cfg(not(any(test, doctest, docsrs)))]
 #[doc(hidden)]
 #[link_section = ".pv"]
-pub static mut PROGRAM_VECTOR: MaybeUninit<FfiProgramVector> = MaybeUninit::uninit();
+pub static mut PROGRAM_VECTOR: core::mem::MaybeUninit<FfiProgramVector> =
+    core::mem::MaybeUninit::uninit();
 
 impl ProgramVector {
     /// Create a new ProgramVector instance
