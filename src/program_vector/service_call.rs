@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::ffi::service_call as ffi;
 use ::core::{
     ffi::{c_int, c_void},

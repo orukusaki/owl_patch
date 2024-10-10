@@ -8,11 +8,16 @@ use super::{
     AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
 };
 
+/// Current audio settings (set by the os / device)
 #[derive(Clone, Copy)]
 pub struct AudioSettings {
+    /// sample rate in Hz
     pub sample_rate: usize,
+    /// block size (per channel)
     pub blocksize: usize,
+    /// channel count (in == out)
     pub channels: usize,
+    /// Sample format
     pub format: AudioFormat,
 }
 
@@ -75,13 +80,15 @@ impl ConvertFrom<Samplei32> for i32 {
     }
 }
 
+/// Container for the input and output audio buffers
 pub struct AudioBuffers {
     input: &'static *mut i32,
     output: &'static *mut i32,
+    /// Current audio settings (set by the os / device)
     pub settings: AudioSettings,
     program_ready: Option<unsafe extern "C" fn()>,
-    input_buffer: Buffer<i32, Interleaved, Box<[i32]>>,
-    output_buffer: Buffer<i32, Interleaved, Box<[i32]>>,
+    input_buffer: Buffer<Interleaved, Box<[i32]>>,
+    output_buffer: Buffer<Interleaved, Box<[i32]>>,
 }
 
 impl AudioBuffers {
@@ -92,11 +99,8 @@ impl AudioBuffers {
         settings: AudioSettings,
         program_ready: Option<unsafe extern "C" fn()>,
     ) -> Self {
-        let input_buffer =
-            Buffer::<i32, Interleaved, _>::new(settings.channels, settings.blocksize);
-
-        let output_buffer =
-            Buffer::<i32, Interleaved, _>::new(settings.channels, settings.blocksize);
+        let input_buffer = Buffer::<Interleaved, _>::new(settings.channels, settings.blocksize);
+        let output_buffer = Buffer::<Interleaved, _>::new(settings.channels, settings.blocksize);
 
         Self {
             input,
@@ -108,9 +112,18 @@ impl AudioBuffers {
         }
     }
 
+    /// Start processing audio samples
+    ///
+    /// Supply a closure which will be run for each audio block as it is received.  The closure will have access to
+    /// an input and output buffer.  The number of channels depends on [self.settings.channels].  The buffers are invalidated after
+    /// each block, so must not escape the closure.
+    ///
+    /// This function never terminates.
+    ///
+    /// [self.settings.channels]: AudioSettings
     pub fn run(
         &mut self,
-        f: impl FnMut(&Buffer<i32, Interleaved, Box<[i32]>>, &mut Buffer<i32, Interleaved, Box<[i32]>>),
+        f: impl FnMut(&Buffer<Interleaved, Box<[i32]>>, &mut Buffer<Interleaved, Box<[i32]>>),
     ) -> ! {
         match self.settings.format {
             AudioFormat::Format24B16 => self.run_with_format::<Samplew16>(f),
@@ -120,10 +133,7 @@ impl AudioBuffers {
 
     fn run_with_format<F>(
         &mut self,
-        mut f: impl FnMut(
-            &Buffer<i32, Interleaved, Box<[i32]>>,
-            &mut Buffer<i32, Interleaved, Box<[i32]>>,
-        ),
+        mut f: impl FnMut(&Buffer<Interleaved, Box<[i32]>>, &mut Buffer<Interleaved, Box<[i32]>>),
     ) -> !
     where
         i32: ConvertFrom<F>,

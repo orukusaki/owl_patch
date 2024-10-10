@@ -11,7 +11,7 @@ use owl_patch::{
 #[patch("Minimal")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
-    let mut buffer: Buffer<f32, Channels, _> =
+    let mut buffer: Buffer<Channels, _> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
     let parameters = pv.parameters();
