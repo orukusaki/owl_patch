@@ -11,9 +11,11 @@ pub mod midi_message;
 
 pub mod program_vector;
 pub mod sample_buffer;
+pub mod volts_per_octave;
 pub use ffi::openware_midi_control::{
     OpenWareMidiControl, OpenWareMidiSysexCommand, PatchButtonId, PatchParameterId,
 };
+
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{

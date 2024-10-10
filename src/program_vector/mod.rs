@@ -3,7 +3,7 @@ extern crate alloc;
 
 use core::slice;
 
-use crate::ffi::program_vector as ffi;
+use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerOctave};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -25,6 +25,7 @@ mod meta;
 pub use meta::*;
 
 mod service_call;
+pub use service_call::DeviceParameters;
 use service_call::{ServiceCall, SystemFunction};
 
 const PROGRAM_VECTOR_CHECKSUM_V13: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V13 as u8;
@@ -45,6 +46,7 @@ pub struct ProgramVector {
     parameters: Parameters,
     service_call: ServiceCall,
     midi: Option<Midi>,
+    volts_per_octave: Option<VoltsPerOctave>,
 }
 
 #[cfg(not(any(test, doctest, docsrs)))]
@@ -122,8 +124,9 @@ impl ProgramVector {
             parameters,
             meta,
             audio,
-            service_call: ServiceCall::new(pv.serviceCall),
+            service_call: ServiceCall::new(pv.serviceCall, pv.hardware_version),
             midi: None,
+            volts_per_octave: None,
         }
     }
 
@@ -147,6 +150,13 @@ impl ProgramVector {
     /// Get audio buffers
     pub fn audio(&mut self) -> &mut AudioBuffers {
         &mut self.audio
+    }
+
+    /// Get calibrated volts per octave convertor
+    pub fn volts_per_octave(&mut self) -> VoltsPerOctave {
+        *self
+            .volts_per_octave
+            .get_or_insert_with(|| VoltsPerOctave::new(self.service_call.device_parameters()))
     }
 }
 
