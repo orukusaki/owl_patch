@@ -6,11 +6,10 @@ use fundsp::shared::Shared;
 use owl_patch::{
     midi_message::MidiMessage,
     patch,
-    program_vector::{
-        heap_bytes_used, Midi, Parameters, PatchButtonId, PatchParameterId, ProgramVector,
-    },
+    program_vector::{heap_bytes_used, Midi, Parameters, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
     volts_per_octave::VoltsPerOctave,
+    PatchButtonId, PatchParameterId,
 };
 
 const VELOCITY_IN: PatchParameterId = PatchParameterId::PARAMETER_A;
@@ -21,12 +20,12 @@ const GATE_OUT: PatchButtonId = PatchButtonId::BUTTON_3;
 
 #[patch("Volts per octave")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio.settings;
+    let audio_settings = pv.audio().settings;
     let vpo = pv.volts_per_octave();
-    let mut buffer: Buffer<f32, Channels, _> =
+    let mut buffer: Buffer<Channels, _> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
-    let parameters = pv.parameters;
+    let parameters = pv.parameters();
     parameters.register(VELOCITY_IN, "Velocity");
     parameters.register(VELOCITY_OUT, "Velocity>");
 
@@ -37,12 +36,12 @@ fn run(mut pv: ProgramVector) -> ! {
     midi.on_receive(midi_callback(&out_level, parameters, vpo));
     parameters.on_button_changed(button_changed_callback(&in_level, midi, parameters, vpo));
 
-    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.meta().set_heap_bytes_used(heap_bytes_used());
 
     let mut right_level = 0.0;
 
     // Main audio loop
-    pv.audio.run(|input, output| {
+    pv.audio().run(|input, output| {
         buffer.convert_from(input);
 
         let mut left = buffer.left_mut().unwrap();
