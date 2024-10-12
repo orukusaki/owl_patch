@@ -31,7 +31,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
     if !valid_signature {
         return parse::Error::new(
             f.span(),
-            "`#[patch]` function must have signature `fn (mut pv: ProgramVector) -> !`",
+            "`#[patch]` function must have signature `fn (ProgramVector) -> !`",
         )
         .to_compile_error()
         .into();
