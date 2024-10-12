@@ -34,29 +34,54 @@ pub trait ConvertTo<T> {
     fn convert_to(&self, other: &mut T);
 }
 
+/// Consuming Sample conversion trait
+pub trait ConvertInto<T> {
+    /// Convert to correct format
+    fn convert_into(self) -> T;
+}
+
+/// Auto implementation making self->self conversion a nop
+impl<T> ConvertInto<T> for T {
+    fn convert_into(self) -> Self {
+        self
+    }
+}
+
 /// Auto implementation
-impl<B, T> ConvertTo<T> for B
+impl<A, B> ConvertTo<B> for A
 where
-    for<'a> T: ConvertFrom<&'a B>,
+    for<'a> B: ConvertFrom<&'a A>,
 {
-    fn convert_to(&self, other: &mut T) {
+    fn convert_to(&self, other: &mut B) {
         other.convert_from(self)
     }
 }
 
-impl ConvertFrom<i32> for f32 {
+impl ConvertInto<f32> for i32 {
     /// Convertion to float, so that i32::MAX => 1.0 and i32::MIN => -1.0
-    fn convert_from(&mut self, other: i32) {
+    fn convert_into(self) -> f32 {
         const MUL: f32 = 1.0 / (0x80000000i64 as f32);
-        *self = other as f32 * MUL
+        self as f32 * MUL
+    }
+}
+
+impl ConvertInto<i32> for f32 {
+    /// Convertion from float, so that 1.0 => i32::MAX and -1.0 => i32::MIN
+    fn convert_into(self) -> i32 {
+        const MUL: f32 = 0x80000000i64 as f32;
+        (self * MUL) as i32
+    }
+}
+
+impl ConvertFrom<i32> for f32 {
+    fn convert_from(&mut self, other: i32) {
+        *self = other.convert_into();
     }
 }
 
 impl ConvertFrom<f32> for i32 {
-    /// Convertion from float, so that 1.0 => i32::MAX and -1.0 => i32::MIN
     fn convert_from(&mut self, other: f32) {
-        const MUL: f32 = 0x80000000i64 as f32;
-        *self = (other * MUL) as i32
+        *self = other.convert_into();
     }
 }
 

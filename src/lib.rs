@@ -1,8 +1,12 @@
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 #![feature(array_chunks)]
 #![feature(const_refs_to_static)]
 #![feature(slice_from_ptr_range)]
+#![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
+
+#[cfg(test)]
+extern crate std;
 
 extern crate alloc;
 
@@ -23,6 +27,29 @@ use core::{
     mem::MaybeUninit,
 };
 
+/// # Patch entry-point
+///
+/// Use this macro to define the entry-point of your patch. Pass a string literal as your patch name.
+/// The function can have any name, but should have the signature `fn(ProgramVector) -> !`. There should be
+/// exactly one invocation per patch to ensure it builds correctly.
+///
+/// # example
+/// ```
+/// #![no_main]
+/// #![no_std]
+///
+/// use owl_patch::patch;
+/// use owl_patch::program_vector::ProgramVector;
+///
+/// #[patch("My Patch Name")]
+/// fn run(mut pv: ProgramVector) -> ! {
+/// // patch code
+/// }
+/// ```
+///
+/// The [ProgramVector] argument contains everything you need to interact with the hardware / os
+///
+/// [ProgramVector]: crate::program_vector::ProgramVector
 pub use owl_patch_macros::patch;
 
 #[cfg(not(test))]

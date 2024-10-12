@@ -8,7 +8,7 @@ use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, Midi, Parameters, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
-    volts_per_octave::VoltsPerOctave,
+    volts_per_octave::{Note, Volts, VoltsPerSample},
     PatchButtonId, PatchParameterId,
 };
 
@@ -21,7 +21,7 @@ const GATE_OUT: PatchButtonId = PatchButtonId::BUTTON_3;
 #[patch("Volts per octave")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
-    let vpo = pv.volts_per_octave();
+    let (vps_in, vps_out) = pv.volts_per_sample();
     let mut buffer: Buffer<Channels, _> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
@@ -33,8 +33,8 @@ fn run(mut pv: ProgramVector) -> ! {
     let out_level = Shared::new(0.0);
 
     let midi = pv.midi();
-    midi.on_receive(midi_callback(&out_level, parameters, vpo));
-    parameters.on_button_changed(button_changed_callback(&in_level, midi, parameters, vpo));
+    midi.on_receive(midi_callback(&out_level, parameters, vps_out));
+    parameters.on_button_changed(button_changed_callback(&in_level, midi, parameters, vps_in));
 
     pv.meta().set_heap_bytes_used(heap_bytes_used());
 
@@ -52,8 +52,9 @@ fn run(mut pv: ProgramVector) -> ! {
             // Update the right side value whenever gate 2 is open
             if parameters.get_button(GATE_IN_B) {
                 let raw_value = right.iter().sum::<f32>() / audio_settings.blocksize as f32;
-                let note = vpo.sample_to_note(raw_value);
-                right_level = vpo.note_to_sample(note);
+                let note: Note = (vps_in * raw_value).into();
+                let volts: Volts = note.into();
+                right_level = volts / vps_out;
             }
 
             right.fill(right_level);
@@ -66,14 +67,15 @@ fn run(mut pv: ProgramVector) -> ! {
 fn midi_callback(
     out_level: &Shared,
     parameters: Parameters,
-    vpo: VoltsPerOctave,
+    vps: VoltsPerSample,
 ) -> impl Fn(MidiMessage) {
     let out_level = out_level.clone();
     move |message: MidiMessage| {
         if message.is_note_on() {
-            let note = message.note();
+            let note: Note = message.note().into();
+            let v: Volts = note.into();
 
-            out_level.set(vpo.note_to_sample(note));
+            out_level.set(v / vps);
             let velocity = message.velocity() as f32 / 127.0;
 
             parameters.set(VELOCITY_OUT, velocity);
@@ -88,17 +90,17 @@ fn button_changed_callback(
     in_level: &Shared,
     midi: Midi,
     parameters: Parameters,
-    vpo: VoltsPerOctave,
+    vps: VoltsPerSample,
 ) -> impl FnMut(PatchButtonId, u16, u16) {
     let in_level = in_level.clone();
-    let mut previous_note = 0u8;
+    let mut previous_note: Note = Default::default();
 
     move |bid: PatchButtonId, state: u16, _samples: u16| {
         if bid == GATE_IN_A {
             match state {
                 0 => midi.send(MidiMessage::note_off(1, previous_note)),
                 _ => {
-                    let note = vpo.sample_to_note(in_level.value());
+                    let note = (in_level.value() * vps).into();
                     if note != previous_note {
                         midi.send(MidiMessage::note_off(1, previous_note));
                     }

@@ -81,18 +81,23 @@ impl MidiMessage {
     }
 
     /// Create a new Note On message
-    pub fn note_on(ch: u8, note: u8, velocity: u8) -> Self {
+    pub fn note_on(ch: u8, note: impl Into<u8>, velocity: u8) -> Self {
         Self::new(
             USB_COMMAND_NOTE_ON,
             NOTE_ON | (ch & 0xf),
-            note & 0x7f,
+            note.into() & 0x7f,
             velocity & 0x7f,
         )
     }
 
     /// Create a new Note Off message
-    pub fn note_off(ch: u8, note: u8) -> Self {
-        Self::new(USB_COMMAND_NOTE_OFF, NOTE_OFF | (ch & 0xf), note & 0x7f, 0)
+    pub fn note_off(ch: u8, note: impl Into<u8>) -> Self {
+        Self::new(
+            USB_COMMAND_NOTE_OFF,
+            NOTE_OFF | (ch & 0xf),
+            note.into() & 0x7f,
+            0,
+        )
     }
 
     /// Midi port number

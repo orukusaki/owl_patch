@@ -3,7 +3,7 @@ extern crate alloc;
 
 use core::slice;
 
-use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerOctave};
+use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -25,7 +25,6 @@ mod meta;
 pub use meta::*;
 
 mod service_call;
-pub use service_call::DeviceParameters;
 use service_call::{ServiceCall, SystemFunction};
 
 const PROGRAM_VECTOR_CHECKSUM_V13: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V13 as u8;
@@ -46,7 +45,7 @@ pub struct ProgramVector {
     parameters: Parameters,
     service_call: ServiceCall,
     midi: Option<Midi>,
-    volts_per_octave: Option<VoltsPerOctave>,
+    volts_per_octave: Option<(VoltsPerSample, VoltsPerSample)>,
 }
 
 #[cfg(not(any(test, doctest, docsrs)))]
@@ -137,13 +136,6 @@ impl ProgramVector {
             .get_or_insert_with(|| Midi::init(&mut self.service_call))
     }
 
-    /// Get Volts per Octave convertor
-    pub fn volts_per_octave(&mut self) -> VoltsPerOctave {
-        *self
-            .volts_per_octave
-            .get_or_insert_with(|| VoltsPerOctave::new(self.service_call.device_parameters()))
-    }
-
     /// Get patch parameter controller
     pub fn parameters(&mut self) -> Parameters {
         self.parameters
@@ -157,6 +149,21 @@ impl ProgramVector {
     /// Get audio buffers
     pub fn audio(&mut self) -> &mut AudioBuffers {
         &mut self.audio
+    }
+
+    /// Get calibrated volts per sample convertors as a pair (input, output)
+    ///
+    /// ```
+    /// let (vps_in, vps_out) = pv.volts_per_sample();
+    /// ```
+    pub fn volts_per_sample(&mut self) -> (VoltsPerSample, VoltsPerSample) {
+        *self.volts_per_octave.get_or_insert_with(|| {
+            let parameters = self.service_call.device_parameters();
+            (
+                VoltsPerSample::new(parameters.input_scalar, parameters.input_offset),
+                VoltsPerSample::new(parameters.output_scalar, parameters.output_offset),
+            )
+        })
     }
 }
 
