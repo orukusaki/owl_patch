@@ -52,7 +52,7 @@ impl SystemFunction {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct DeviceParameters {
+pub(crate) struct DeviceParameters {
     pub input_offset: f32,
     pub input_scalar: f32,
     pub output_offset: f32,
