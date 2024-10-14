@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(target_os = "none", no_std)]
 #![feature(array_chunks)]
 #![feature(const_refs_to_static)]
 #![feature(slice_from_ptr_range)]
@@ -14,6 +14,11 @@ pub mod sample_buffer;
 pub use ffi::openware_midi_control::{
     OpenWareMidiControl, OpenWareMidiSysexCommand, PatchButtonId, PatchParameterId,
 };
+
+#[cfg(not(target_os = "none"))]
+#[doc(hidden)]
+pub mod test_harness;
+
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{
@@ -21,17 +26,35 @@ use core::{
     mem::MaybeUninit,
 };
 
+/// # Patch entry-point
+///
+/// Use this macro to define the entry-point of your patch. Pass a string literal as your patch name.
+/// The function can have any name, but should have the signature `fn(ProgramVector) -> !`. There should be
+/// exactly one invocation per patch to ensure it builds correctly.
+///
+/// # example
+/// ```ignore
+/// #![no_main]
+/// #![no_std]
+///
+/// use owl_patch::patch;
+/// use owl_patch::program_vector::ProgramVector;
+///
+/// #[patch("My Patch Name")]
+/// fn run(mut pv: ProgramVector) -> ! {
+/// // patch code
+/// }
+/// ```
+///
+/// The [ProgramVector] argument contains everything you need to interact with the hardware / os
+///
+/// [ProgramVector]: crate::program_vector::ProgramVector
 pub use owl_patch_macros::patch;
 
-#[cfg(not(test))]
-mod panic {
-    use super::program_vector::error;
-    use alloc::format;
-    use core::panic::PanicInfo;
-    #[panic_handler]
-    unsafe fn panic_handler(info: &PanicInfo) -> ! {
-        error(&format!("{}", info.message()))
-    }
+#[cfg(target_os = "none")]
+#[panic_handler]
+unsafe fn panic_handler(info: &core::panic::PanicInfo) -> ! {
+    program_vector::error(&alloc::format!("{}", info.message()))
 }
 
 #[doc(hidden)]
@@ -90,6 +113,7 @@ impl<const N: usize> ProgramHeader<N> {
 }
 
 /// Startup function
+#[cfg(target_os = "none")]
 unsafe extern "C" fn reset_handler() {
     // These values are provided by the linker script
     extern "C" {
@@ -105,13 +129,19 @@ unsafe extern "C" fn reset_handler() {
         fn __main() -> !;
     }
 
+    // Copy initialised static data to RAM
     let data = core::slice::from_ptr_range(&raw mut _sdata..&raw mut _edata);
     let idata = core::slice::from_raw_parts_mut(&raw mut _sidata, data.len());
 
     idata.copy_from_slice(data);
 
+    // Zero-fill uninialised static data
     let bss = core::slice::from_mut_ptr_range(&raw mut _sbss..&raw mut _ebss);
     bss.fill(0);
 
+    // Start the program
     __main()
 }
+
+#[cfg(not(target_os = "none"))]
+unsafe extern "C" fn reset_handler() {}
