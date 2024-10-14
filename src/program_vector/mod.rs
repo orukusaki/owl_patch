@@ -151,6 +151,7 @@ impl ProgramVector {
     /// Get calibrated volts per sample convertors as a pair (input, output)
     ///
     /// ```
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
     /// let (vps_in, vps_out) = pv.volts_per_sample();
     /// ```
     pub fn volts_per_sample(&mut self) -> (VoltsPerSample, VoltsPerSample) {

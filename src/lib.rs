@@ -5,9 +5,6 @@
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-#[cfg(test)]
-extern crate std;
-
 extern crate alloc;
 
 mod ffi;
