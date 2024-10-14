@@ -29,36 +29,28 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
         && f.sig.inputs.len() == 1;
 
     if !valid_signature {
-        return parse::Error::new(
-            f.span(),
-            "`#[patch]` function must have signature `fn (ProgramVector) -> !`",
-        )
-        .to_compile_error()
-        .into();
+        return sig_error(&f);
     }
 
     let input_type = match &f.sig.inputs[0] {
         syn::FnArg::Typed(pat_type) => &pat_type.ty,
-        _ => todo!(),
+        _ => return sig_error(&f),
     };
 
     let input_type = match input_type.as_ref() {
         Type::Path(type_path) => type_path.path.clone(),
-        _ => todo!(),
+        _ => return sig_error(&f),
     };
 
     let patch_name = CString::new(parse_macro_input!(attr as LitStr).value()).unwrap();
     let name_len = patch_name.as_bytes_with_nul().len();
-
     let main_fn = &f.sig.ident;
 
     quote!(
         #[cfg(target_os = "none")]
         mod __header {
 
-            use core::mem::MaybeUninit;
             use owl_patch::ProgramHeader;
-
             use owl_patch::program_vector::PROGRAM_VECTOR;
 
             #[cfg_attr(target_os = "none", link_section = ".program_header")]
@@ -81,5 +73,14 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
 
         #f
     )
+    .into()
+}
+
+fn sig_error(f: &ItemFn) -> TokenStream {
+    parse::Error::new(
+        f.span(),
+        "`#[patch]` function must have signature `fn (ProgramVector) -> !`",
+    )
+    .to_compile_error()
     .into()
 }
