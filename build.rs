@@ -9,6 +9,18 @@ use bindgen::callbacks::DeriveInfo;
 struct MyCallback;
 impl core::panic::UnwindSafe for MyCallback {}
 
+impl bindgen::callbacks::ParseCallbacks for MyCallback {
+    fn add_derives(&self, info: &DeriveInfo<'_>) -> Vec<String> {
+        match info.name {
+            "PatchParameterId"
+            | "PatchButtonId"
+            | "OpenWareMidiSysexCommand"
+            | "OpenWareMidiControl" => vec!["num_derive::FromPrimitive".to_string()],
+            _ => vec![],
+        }
+    }
+}
+
 fn main() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap())
         .canonicalize()
@@ -29,18 +41,6 @@ fn main() {
 
     generate_bindings(&cpp_source, &out_path, &lib_source);
     copy_linker_scripts(&cpp_source, &out_path);
-}
-
-impl bindgen::callbacks::ParseCallbacks for MyCallback {
-    fn add_derives(&self, info: &DeriveInfo<'_>) -> Vec<String> {
-        match info.name {
-            "PatchParameterId"
-            | "PatchButtonId"
-            | "OpenWareMidiSysexCommand"
-            | "OpenWareMidiControl" => vec!["num_derive::FromPrimitive".to_string()],
-            _ => vec![],
-        }
-    }
 }
 
 fn copy_linker_scripts(cpp_source: &Path, out_path: &Path) {

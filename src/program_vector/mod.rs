@@ -1,5 +1,6 @@
 //! Communication with the Host OS
 extern crate alloc;
+use num::FromPrimitive;
 
 use core::slice;
 
@@ -27,7 +28,6 @@ pub use meta::*;
 mod service_call;
 use service_call::{ServiceCall, SystemFunction};
 
-const PROGRAM_VECTOR_CHECKSUM_V13: u8 = ffi::PROGRAM_VECTOR_CHECKSUM_V13 as u8;
 const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
 const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
 const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
@@ -48,9 +48,8 @@ pub struct ProgramVector {
     volts_per_octave: Option<(VoltsPerSample, VoltsPerSample)>,
 }
 
-#[cfg(not(any(test, doctest, docsrs)))]
 #[doc(hidden)]
-#[link_section = ".pv"]
+#[cfg_attr(target_os = "none", link_section = ".pv")]
 pub static mut PROGRAM_VECTOR: core::mem::MaybeUninit<FfiProgramVector> =
     core::mem::MaybeUninit::uninit();
 
@@ -67,20 +66,18 @@ impl ProgramVector {
     ) -> Self {
         Messages::init(&mut pv.message, &mut pv.error, pv.programStatus);
 
-        // if the checksum is valid, then the vector was initialised
-        if pv.checksum < PROGRAM_VECTOR_CHECKSUM_V13 {
-            panic!("Program Vector checksum error - is your firmware up to date?");
-        }
+        let checksum = ProgramVectorChecksum::from_u8(pv.checksum)
+            .expect("Program Vector checksum error - is your firmware up to date?");
 
         let meta = Meta::new(
             &pv.cycles_per_block,
             &mut pv.heap_bytes_used,
-            &pv.checksum,
-            &pv.hardware_version,
-            &pv.heapLocations,
+            checksum,
+            pv.hardware_version,
+            pv.heapLocations,
         );
 
-        #[cfg(all(feature = "talc", not(test)))]
+        #[cfg(all(feature = "talc", target_os = "none"))]
         {
             let mut talc = talc_heap::ALLOCATOR.lock();
             meta.memory_segments().iter().for_each(|seg| unsafe {
@@ -167,7 +164,7 @@ impl ProgramVector {
     }
 }
 
-#[cfg(all(feature = "talc", not(test)))]
+#[cfg(all(feature = "talc", target_os = "none"))]
 mod talc_heap {
     use talc::*;
 
@@ -188,5 +185,5 @@ mod talc_heap {
     }
 }
 
-#[cfg(all(feature = "talc", not(test)))]
+#[cfg(all(feature = "talc", target_os = "none"))]
 pub use talc_heap::heap_bytes_used;
