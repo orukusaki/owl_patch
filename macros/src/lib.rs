@@ -44,7 +44,6 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let patch_name = CString::new(parse_macro_input!(attr as LitStr).value()).unwrap();
     let name_len = patch_name.as_bytes_with_nul().len();
-
     let main_fn = &f.sig.ident;
 
     quote!(

@@ -1,6 +1,7 @@
 //! Sample / Volts / Frequency / Note conversions using calibrated device data
 use core::ops::{Deref, DerefMut, Div, Mul};
 
+#[cfg(target_os = "none")]
 use num_traits::Float;
 
 /// Sample / Volts / Frequency / Note conversions using calibrated device data
@@ -119,6 +120,12 @@ impl From<f32> for Volts {
     }
 }
 
+impl From<Volts> for f32 {
+    fn from(volts: Volts) -> Self {
+        volts.0
+    }
+}
+
 impl From<Frequency> for Volts {
     fn from(freq: Frequency) -> Self {
         (freq.0 / 440.0).log2().into()
@@ -161,9 +168,9 @@ impl From<u8> for Note {
     }
 }
 
-impl Into<u8> for Note {
-    fn into(self) -> u8 {
-        self.0
+impl From<Note> for u8 {
+    fn from(val: Note) -> Self {
+        val.0
     }
 }
 
@@ -193,6 +200,12 @@ pub struct Frequency(pub f32);
 impl From<f32> for Frequency {
     fn from(value: f32) -> Self {
         Frequency(value)
+    }
+}
+
+impl From<Frequency> for f32 {
+    fn from(freq: Frequency) -> Self {
+        freq.0
     }
 }
 
