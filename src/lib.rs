@@ -1,6 +1,4 @@
 #![cfg_attr(target_os = "none", no_std)]
-#![feature(array_chunks)]
-#![feature(const_refs_to_static)]
 #![feature(slice_from_ptr_range)]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
