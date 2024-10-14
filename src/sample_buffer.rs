@@ -137,7 +137,8 @@ impl<T> MutableContainer for Vec<T> {}
 ///
 /// * S: Describes how the samples are stored, see [StoragePattern]
 /// * C: [Container] or [MutableContainer] type for samples.
-///   * C::Item Can be any of data, but [i32] and [f32] are the ones you'll most likely want to use. If using [f32], the signal should be kept between -1.0 and 1.0. Anything outside
+///   * C::Item Can be any of data, but [i32] and [f32] are the ones you'll most likely want to use.
+///     If using [f32], the signal should be kept between -1.0 and 1.0. Anything outside
 ///     of this will be clipped during conversion. The range for [i32] is [i32::MIN]..[i32::MAX]
 pub struct Buffer<S: StoragePattern, C: Container> {
     samples: C,

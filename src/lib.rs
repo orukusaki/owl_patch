@@ -20,6 +20,11 @@ pub mod volts_per_octave;
 pub use ffi::openware_midi_control::{
     OpenWareMidiControl, OpenWareMidiSysexCommand, PatchButtonId, PatchParameterId,
 };
+
+#[cfg(not(target_os = "none"))]
+#[doc(hidden)]
+pub mod test_harness;
+
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{
@@ -52,15 +57,10 @@ use core::{
 /// [ProgramVector]: crate::program_vector::ProgramVector
 pub use owl_patch_macros::patch;
 
-#[cfg(not(test))]
-mod panic {
-    use super::program_vector::error;
-    use alloc::format;
-    use core::panic::PanicInfo;
-    #[panic_handler]
-    unsafe fn panic_handler(info: &PanicInfo) -> ! {
-        error(&format!("{}", info.message()))
-    }
+#[cfg(target_os = "none")]
+#[panic_handler]
+unsafe fn panic_handler(info: &core::panic::PanicInfo) -> ! {
+    program_vector::error(&alloc::format!("{}", info.message()))
 }
 
 #[doc(hidden)]
@@ -119,6 +119,7 @@ impl<const N: usize> ProgramHeader<N> {
 }
 
 /// Startup function
+#[cfg(target_os = "none")]
 unsafe extern "C" fn reset_handler() {
     // These values are provided by the linker script
     extern "C" {
@@ -134,13 +135,19 @@ unsafe extern "C" fn reset_handler() {
         fn __main() -> !;
     }
 
+    // Copy initialised static data to RAM
     let data = core::slice::from_ptr_range(&raw mut _sdata..&raw mut _edata);
     let idata = core::slice::from_raw_parts_mut(&raw mut _sidata, data.len());
 
     idata.copy_from_slice(data);
 
+    // Zero-fill uninialised static data
     let bss = core::slice::from_mut_ptr_range(&raw mut _sbss..&raw mut _ebss);
     bss.fill(0);
 
+    // Start the program
     __main()
 }
+
+#[cfg(not(target_os = "none"))]
+unsafe extern "C" fn reset_handler() {}

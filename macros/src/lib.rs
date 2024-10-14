@@ -53,6 +53,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
     let main_fn = &f.sig.ident;
 
     quote!(
+        #[cfg(target_os = "none")]
         mod __header {
 
             use core::mem::MaybeUninit;
@@ -60,7 +61,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
 
             use owl_patch::program_vector::PROGRAM_VECTOR;
 
-            #[link_section = ".program_header"]
+            #[cfg_attr(target_os = "none", link_section = ".program_header")]
             static HEADER: ProgramHeader<{ #name_len }> =
                 ProgramHeader::new(
                     #patch_name,

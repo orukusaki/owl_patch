@@ -39,6 +39,17 @@ impl Parameters {
         }
     }
 
+    /// Register an input or output parameter
+    ///
+    /// ```
+    /// # use owl_patch::{program_vector::Parameters, PatchParameterId};
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+    /// # let parameters = pv.parameters();
+    /// // Register an input param
+    /// parameters.register(PatchParameterId::PARAMETER_A, "volume");
+    /// // Postfixing the name with ">" designates the parameter as an output
+    /// parameters.register(PatchParameterId::PARAMETER_F, "MyOutput>");
+    /// ```
     pub fn register(&self, pid: PatchParameterId, name: &str) {
         if let Some(register_patch_parameter) = self.register_patch_parameter {
             let c_name = CString::new(name).expect("failed to create paremeter name string");
@@ -48,16 +59,51 @@ impl Parameters {
         }
     }
 
+    /// Get the value of an input parameter
+    ///
+    /// return value will be in the range (-1.0..1.0)
+    ///
+    /// ```
+    /// # use owl_patch::{program_vector::Parameters, PatchParameterId};
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+    /// # let parameters = pv.parameters();
+    /// parameters.register(PatchParameterId::PARAMETER_A, "volume");
+    /// let value = parameters.get(PatchParameterId::PARAMETER_A);
+    /// ```
+    pub fn get(&self, pid: PatchParameterId) -> f32 {
+        self.parameters[pid as usize] as f32 / 4096.0
+    }
+
+    /// Set the value of an output parameter
+    ///
+    /// value should be in the range (-1.0..1.0)
+    ///
+    /// ```
+    /// # use owl_patch::{program_vector::Parameters, PatchParameterId};
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+    /// # let parameters = pv.parameters();
+    /// parameters.register(PatchParameterId::PARAMETER_F, "MyOutput>");
+    /// parameters.set(PatchParameterId::PARAMETER_F, 0.5);
+    /// ```
     pub fn set(&self, pid: PatchParameterId, value: f32) {
         if let Some(set_patch_parameter) = self.set_patch_parameter {
             unsafe { set_patch_parameter(pid as u8, (value * 4096.0) as i16) }
         }
     }
 
-    pub fn get(&self, pid: PatchParameterId) -> f32 {
-        self.parameters[pid as usize] as f32 / 4096.0
-    }
-
+    /// Set a callback for button changed events
+    ///
+    /// The 'value' parameter will generally be either 0 or 0xfff, 'samples' is the number
+    /// of samples through the previous audio buffer playback that the change occurred.
+    ///
+    /// ```
+    /// # use owl_patch::{program_vector::Parameters, PatchButtonId};
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+    /// # let parameters = pv.parameters();
+    /// parameters.on_button_changed(|bid, value, samples| {
+    ///     // Do something
+    /// });
+    /// ```
     pub fn on_button_changed(
         &self,
         callback: impl FnMut(PatchButtonId, u16, u16) + Send + 'static,
@@ -65,14 +111,30 @@ impl Parameters {
         BUTTON_CALLBACK.lock().replace(Some(Box::new(callback)));
     }
 
+    /// Get an input button value
+    /// ```
+    /// # use owl_patch::{program_vector::Parameters, PatchButtonId};
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+    /// # let parameters = pv.parameters();
+    /// if parameters.get_button(PatchButtonId::BUTTON_1) {
+    /// //.. do something
+    /// }
+    /// ```
+    pub fn get_button(&self, bid: PatchButtonId) -> bool {
+        (*self.buttons) & (1 << bid as u8) != 0
+    }
+
+    /// Set an output button value
+    /// ```
+    /// # use owl_patch::{program_vector::Parameters, PatchButtonId};
+    /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+    /// # let parameters = pv.parameters();
+    /// parameters.set_button(PatchButtonId::BUTTON_3, true);
+    /// ```
     pub fn set_button(&self, bid: PatchButtonId, state: bool) {
         if let Some(set_button) = self.set_button {
             unsafe { set_button(bid as u8, if state { 0xfff } else { 0 }, 0) };
         }
-    }
-
-    pub fn get_button(&self, bid: PatchButtonId) -> bool {
-        (*self.buttons) & (1 << bid as u8) != 0
     }
 }
 

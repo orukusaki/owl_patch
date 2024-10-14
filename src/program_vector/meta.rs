@@ -1,7 +1,5 @@
 use core::slice;
 
-use num::FromPrimitive;
-
 use crate::ffi::program_vector as ffi;
 pub use ffi::MemorySegment;
 
@@ -37,18 +35,18 @@ pub const PLAYER_HARDWARE: u8 = ffi::PLAYER_HARDWARE as u8;
 pub struct Meta {
     cycles_per_block: &'static u32,
     heap_bytes_used: &'static mut u32,
-    checksum: &'static u8,
-    hardware_version: &'static u8,
-    heap_locations: &'static *mut MemorySegment,
+    checksum: ProgramVectorChecksum,
+    hardware_version: u8,
+    heap_locations: *mut MemorySegment,
 }
 
 impl Meta {
     pub(crate) fn new(
         cycles_per_block: &'static u32,
         heap_bytes_used: &'static mut u32,
-        checksum: &'static u8,
-        hardware_version: &'static u8,
-        heap_locations: &'static *mut MemorySegment,
+        checksum: ProgramVectorChecksum,
+        hardware_version: u8,
+        heap_locations: *mut MemorySegment,
     ) -> Self {
         Self {
             cycles_per_block,
@@ -71,12 +69,12 @@ impl Meta {
 
     /// The checksum set by the OS before program start
     pub fn checksum(&self) -> ProgramVectorChecksum {
-        ProgramVectorChecksum::from_u8(*self.checksum).expect("Invalid checksum")
+        self.checksum
     }
 
     /// Get Hardware version. *might* match one of the *_HARDWARE constants.
     pub fn hardware_version(&self) -> u8 {
-        *self.hardware_version
+        self.hardware_version
     }
 
     /// Get a slice of memory segments available for use in heap allocations
@@ -100,6 +98,6 @@ impl Meta {
 
         // Safety: We've checked and the data at least seems to be valid. It is not expected to change
         // during the program's runtime, so effectively the lifetime is 'static
-        unsafe { slice::from_raw_parts(*self.heap_locations, count + 1) }
+        unsafe { slice::from_raw_parts(self.heap_locations, count + 1) }
     }
 }
