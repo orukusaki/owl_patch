@@ -7,19 +7,29 @@ use num_traits::Float;
 ///
 /// # example
 /// ```
-/// #![no_main]
-/// #![no_std]
+/// # use owl_patch::volts_per_octave::*;
+/// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+/// let (vps_in, vps_out) = pv.volts_per_sample();
+/// assert_eq!(vps_in.sample_to_volts(1.0), Volts(2.0)); // actual results will depend on device data
+/// ```
 ///
-/// use owl_patch::patch;
-/// use owl_patch::program_vector::ProgramVector;
-/// use owl_patch::volts_per_octave::Note;
+/// Samples can be converted to/from volts, frequencies and midi notes using either methods or operators/conversions
+/// ```
+/// # use owl_patch::volts_per_octave::*;
+/// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
+/// # let (vps_in, vps_out) = pv.volts_per_sample();
+/// let in_sample = 0.5f32;
+/// let volts = in_sample * vps_in;
+/// assert_eq!(vps_in.sample_to_volts(in_sample), volts);
+/// let freq: Frequency = volts.into();
+/// assert_eq!(vps_in.sample_to_freq(in_sample), freq);
+/// let note: Note = volts.into();
+/// assert_eq!(vps_in.sample_to_note(in_sample), note);
 ///
-/// #[patch("My Patch Name")]
-/// fn run(mut pv: ProgramVector) -> ! {
-///     let (vps_in, vps_out) = pv.volts_per_sample();
-///
-///     assert_eq!(vps_in.volts_to_note(1.0), Note(81));
-/// }
+/// let out_sample = volts / vps_out;
+/// assert_eq!(vps_out.volts_to_sample(volts), out_sample);
+/// assert_eq!(vps_out.note_to_sample(note), out_sample);
+/// assert_eq!(vps_out.freq_to_sample(freq), out_sample);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct VoltsPerSample {
@@ -50,7 +60,7 @@ impl VoltsPerSample {
     }
 
     /// Convert a midi note number to a sample value
-    pub fn note_to_sample<T>(self, note: impl Into<Note>) -> f32 {
+    pub fn note_to_sample(self, note: impl Into<Note>) -> f32 {
         let volts: Volts = note.into().into();
         volts / self
     }
@@ -61,7 +71,7 @@ impl VoltsPerSample {
     }
 
     /// Convert a voltage to a sample value (using calibration data)
-    pub fn volts_to_sample<T>(self, volts: impl Into<Volts>) -> f32 {
+    pub fn volts_to_sample(self, volts: impl Into<Volts>) -> f32 {
         volts.into() / self
     }
 }
@@ -94,6 +104,12 @@ impl Div<VoltsPerSample> for Volts {
 }
 
 /// Amount of Volts. Can be directly converted to/from Frequency and Note
+/// ```
+/// # use owl_patch::volts_per_octave::*;
+/// let volts = Volts(1.0);
+/// assert_eq!(Frequency::from(volts), Frequency(880.0));
+/// assert_eq!(Note::from(volts), Note(81));
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Default, PartialOrd)]
 pub struct Volts(pub f32);
 
@@ -116,6 +132,12 @@ impl From<Note> for Volts {
 }
 
 /// Midi Note Number. Can be directly converted to/from Frequency and Volts
+/// ```
+/// # use owl_patch::volts_per_octave::*;
+/// let note = Note(69);
+/// assert_eq!(Volts::from(note), Volts(0.0));
+/// assert_eq!(Frequency::from(note), Frequency(440.0));
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct Note(pub u8);
 
@@ -159,6 +181,12 @@ impl From<Frequency> for Note {
 }
 
 /// Frequency. Can be directly converted to/from Note and Volts
+/// ```
+/// # use owl_patch::volts_per_octave::*;
+/// let freq = Frequency(440.0);
+/// assert_eq!(Volts::from(freq), Volts(0.0));
+/// assert_eq!(Note::from(freq), Note(69));
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Default, PartialOrd)]
 pub struct Frequency(pub f32);
 
