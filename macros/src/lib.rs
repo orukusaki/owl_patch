@@ -53,7 +53,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
             use owl_patch::ProgramHeader;
             use owl_patch::program_vector::PROGRAM_VECTOR;
 
-            #[cfg_attr(target_os = "none", link_section = ".program_header")]
+            #[link_section = ".program_header"]
             static HEADER: ProgramHeader<{ #name_len }> =
                 ProgramHeader::new(
                     #patch_name,

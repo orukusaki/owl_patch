@@ -1,0 +1,27 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  
+    steps:
+    - name: Install dependencies
+      run: sudo apt install -y build-essential gcc-arm-none-eabi
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --lib
+    - name: Run unit/doc tests
+      run: cargo test
+    - name: Generate docs
+      run: cargo doc
+    - name: Build examples
+      working-directory: examples
+      run: cargo build --release --bins
