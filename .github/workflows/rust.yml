@@ -21,7 +21,7 @@ jobs:
     - name: Run unit/doc tests
       run: cargo test
     - name: Generate docs
-      run: cargo doc
+      run: cargo doc --no-deps
     - name: Build examples
       working-directory: examples
       run: cargo build --release --bins
