@@ -3,6 +3,9 @@ name = "owl_patch"
 version = "0.1.0"
 edition = "2021"
 authors = ["orukusaki"]
+license = "MIT OR Apache-2.0"
+keywords = ["dsp", "embedded", "synthesizer", "audio", "owl"]
+categories = ["multimedia::audio", "no-std", "embedded"]
 
 [dependencies]
 num = {version = "0.4", default-features = false}
