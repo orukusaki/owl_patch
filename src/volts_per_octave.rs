@@ -1,5 +1,5 @@
 //! Sample / Volts / Frequency / Note conversions using calibrated device data
-use core::ops::{Deref, DerefMut, Div, Mul};
+use core::ops::{Div, Mul};
 
 #[cfg(target_os = "none")]
 use num_traits::Float;
@@ -147,20 +147,6 @@ impl From<Note> for Volts {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct Note(pub u8);
-
-impl Deref for Note {
-    type Target = u8;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Note {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 impl From<u8> for Note {
     fn from(value: u8) -> Self {
