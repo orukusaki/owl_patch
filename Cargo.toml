@@ -20,7 +20,11 @@ owl_patch_macros = {path = "./macros"}
 
 [build-dependencies]
 bindgen = {version = "0.70.1"}
+cc = "1.1.30"
 
 [features]
 default = ["talc"]
 talc = ["dep:talc"]
+
+[dev-dependencies]
+ctor = "0.2.8"

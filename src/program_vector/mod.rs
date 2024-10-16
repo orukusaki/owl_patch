@@ -4,7 +4,11 @@ use num::FromPrimitive;
 
 use core::slice;
 
-use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
+use crate::{
+    fastmaths::{set_log_table, set_pow_table},
+    ffi::program_vector as ffi,
+    volts_per_octave::VoltsPerSample,
+};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -26,7 +30,7 @@ mod meta;
 pub use meta::*;
 
 mod service_call;
-use service_call::{ServiceCall, SystemFunction};
+use service_call::{ServiceCall, SystemFunction, SystemTable};
 
 const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
 const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
@@ -116,11 +120,21 @@ impl ProgramVector {
             pv.programReady,
         );
 
+        let mut service_call = ServiceCall::new(pv.serviceCall, pv.hardware_version);
+
+        if let Ok(table) = service_call.get_array(SystemTable::SystemTablePow) {
+            set_pow_table(table);
+        }
+
+        if let Ok(table) = service_call.get_array(SystemTable::SystemTableLog) {
+            set_log_table(table);
+        }
+
         Self {
             parameters,
             meta,
             audio,
-            service_call: ServiceCall::new(pv.serviceCall, pv.hardware_version),
+            service_call,
             midi: None,
             volts_per_octave: None,
         }

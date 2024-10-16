@@ -1,8 +1,7 @@
 //! Sample / Volts / Frequency / Note conversions using calibrated device data
 use core::ops::{Div, Mul};
 
-#[cfg(target_os = "none")]
-use num_traits::Float;
+use super::fastmaths::FastFloat as _;
 
 /// Sample / Volts / Frequency / Note conversions using calibrated device data
 ///
@@ -128,7 +127,7 @@ impl From<Volts> for f32 {
 
 impl From<Frequency> for Volts {
     fn from(freq: Frequency) -> Self {
-        (freq.0 / 440.0).log2().into()
+        (freq.0 / 440.0).fast_log2().into()
     }
 }
 
@@ -197,7 +196,7 @@ impl From<Frequency> for f32 {
 
 impl From<Volts> for Frequency {
     fn from(volts: Volts) -> Self {
-        (440.0 * volts.0.exp2()).into()
+        (440.0 * volts.0.fast_exp2()).into()
     }
 }
 

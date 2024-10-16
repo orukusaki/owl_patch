@@ -8,6 +8,7 @@ extern crate alloc;
 mod ffi;
 pub mod midi_message;
 
+pub mod fastmaths;
 pub mod program_vector;
 pub mod sample_buffer;
 pub mod volts_per_octave;
