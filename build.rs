@@ -15,7 +15,12 @@ impl bindgen::callbacks::ParseCallbacks for MyCallback {
             "PatchParameterId"
             | "PatchButtonId"
             | "OpenWareMidiSysexCommand"
-            | "OpenWareMidiControl" => vec!["num_derive::FromPrimitive".to_string()],
+            | "OpenWareMidiControl"
+            | "MidiRPN"
+            | "OwlProtocol"
+            | "UsbMidi"
+            | "MidiControlChange"
+            | "MidiStatus" => vec!["num_derive::FromPrimitive".to_string()],
             _ => vec![],
         }
     }
@@ -55,7 +60,10 @@ fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
         .header(cpp_source.join("ProgramVector.h").to_str().unwrap())
         .use_core()
         .prepend_enum_name(false)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .allowlist_type("ProgramVector")
+        .allowlist_var("[^_].*")
+        .blocklist_var("programVector")
         .clang_args(["-x", "c++"])
         .rustified_enum("ProgramVectorAudioStatus")
         .generate()
@@ -70,10 +78,21 @@ fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
         .header("stdint.h")
         .header(lib_source.join("MidiMessage.h").to_str().unwrap())
         .use_core()
+        .allowlist_type("MidiRPN")
+        .allowlist_type("OwlProtocol")
+        .allowlist_type("UsbMidi")
+        .allowlist_type("MidiControlChange")
+        .allowlist_type("MidiStatus")
+        .rustified_enum("MidiRPN")
+        .rustified_enum("OwlProtocol")
+        .rustified_enum("UsbMidi")
+        .rustified_enum("MidiControlChange")
+        .rustified_enum("MidiStatus")
+        .blocklist_var("_.*")
         .prepend_enum_name(false)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        // .clang_args(gcc_args)
-        .clang_args(["-x", "c++"])
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .parse_callbacks(Box::new(MyCallback))
+        .clang_args(["-x", "c++", "-fshort-enums"])
         .generate()
         .expect("Unable to generate bindings");
 
@@ -85,9 +104,9 @@ fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
         .header(cpp_source.join("ServiceCall.h").to_str().unwrap())
         .use_core()
         .prepend_enum_name(false)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .generate_cstr(true)
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .blocklist_function("serviceCall")
-        // .clang_args(gcc_args)
         .clang_args(["-x", "c++"])
         .generate()
         .expect("Unable to generate bindings");
@@ -100,9 +119,10 @@ fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
         .header(lib_source.join("OpenWareMidiControl.h").to_str().unwrap())
         .use_core()
         .prepend_enum_name(false)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .parse_callbacks(Box::new(MyCallback))
-        .clang_args(["-x", "c++"])
+        .generate_cstr(true)
+        .clang_args(["-x", "c++", "-fshort-enums"])
         .rustified_enum("PatchParameterId")
         .rustified_enum("PatchButtonId")
         .rustified_enum("OpenWareMidiSysexCommand")

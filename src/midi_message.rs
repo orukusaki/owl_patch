@@ -1,29 +1,6 @@
 //! Simple midi message implementation, ported directly from <https://github.com/RebelTechnology/OwlProgram/blob/develop/LibSource/MidiMessage.h>
-use crate::ffi::midi_message as ffi;
-
-const MIDI_CHANNEL_MASK: u8 = ffi::MIDI_CHANNEL_MASK as u8;
-const MIDI_STATUS_MASK: u8 = ffi::MIDI_STATUS_MASK as u8;
-const USB_COMMAND_SINGLE_BYTE: u8 = ffi::USB_COMMAND_SINGLE_BYTE as u8;
-const USB_COMMAND_SYSEX_EOX1: u8 = ffi::USB_COMMAND_SYSEX_EOX1 as u8;
-const USB_COMMAND_PROGRAM_CHANGE: u8 = ffi::USB_COMMAND_PROGRAM_CHANGE as u8;
-const USB_COMMAND_CHANNEL_PRESSURE: u8 = ffi::USB_COMMAND_CHANNEL_PRESSURE as u8;
-const USB_COMMAND_2BYTE_SYSTEM_COMMON: u8 = ffi::USB_COMMAND_2BYTE_SYSTEM_COMMON as u8;
-const USB_COMMAND_SYSEX_EOX2: u8 = ffi::USB_COMMAND_SYSEX_EOX2 as u8;
-const USB_COMMAND_NOTE_OFF: u8 = ffi::USB_COMMAND_NOTE_OFF as u8;
-const USB_COMMAND_NOTE_ON: u8 = ffi::USB_COMMAND_NOTE_ON as u8;
-const USB_COMMAND_POLY_KEY_PRESSURE: u8 = ffi::USB_COMMAND_POLY_KEY_PRESSURE as u8;
-const USB_COMMAND_CONTROL_CHANGE: u8 = ffi::USB_COMMAND_CONTROL_CHANGE as u8;
-const USB_COMMAND_PITCH_BEND_CHANGE: u8 = ffi::USB_COMMAND_PITCH_BEND_CHANGE as u8;
-const USB_COMMAND_SYSEX: u8 = ffi::USB_COMMAND_SYSEX as u8;
-const USB_COMMAND_SYSEX_EOX3: u8 = ffi::USB_COMMAND_SYSEX_EOX3 as u8;
-const USB_COMMAND_3BYTE_SYSTEM_COMMON: u8 = ffi::USB_COMMAND_3BYTE_SYSTEM_COMMON as u8;
-const NOTE_ON: u8 = ffi::NOTE_ON as u8;
-const NOTE_OFF: u8 = ffi::NOTE_OFF as u8;
-const CONTROL_CHANGE: u8 = ffi::CONTROL_CHANGE as u8;
-const PROGRAM_CHANGE: u8 = ffi::PROGRAM_CHANGE as u8;
-const CHANNEL_PRESSURE: u8 = ffi::CHANNEL_PRESSURE as u8;
-const POLY_KEY_PRESSURE: u8 = ffi::POLY_KEY_PRESSURE as u8;
-const PITCH_BEND_CHANGE: u8 = ffi::PITCH_BEND_CHANGE as u8;
+pub use crate::ffi::midi_message::{MidiStatus, UsbMidi};
+use num::FromPrimitive;
 
 /// Simple midi message implementation, ported directly from <https://github.com/RebelTechnology/OwlProgram/blob/develop/LibSource/MidiMessage.h>
 pub struct MidiMessage {
@@ -42,8 +19,8 @@ impl MidiMessage {
     /// Create a new Control Change message
     pub fn cc(ch: u8, cc: u8, value: u8) -> Self {
         Self::new(
-            USB_COMMAND_CONTROL_CHANGE,
-            CONTROL_CHANGE | (ch & 0xf),
+            UsbMidi::USB_COMMAND_CONTROL_CHANGE as u8,
+            MidiStatus::CONTROL_CHANGE as u8 | (ch & 0xf),
             cc & 0x7f,
             value & 0x7f,
         )
@@ -52,8 +29,8 @@ impl MidiMessage {
     /// Create a new Program Change message
     pub fn pc(ch: u8, pc: u8) -> Self {
         Self::new(
-            USB_COMMAND_PROGRAM_CHANGE,
-            PROGRAM_CHANGE | (ch & 0xf),
+            UsbMidi::USB_COMMAND_PROGRAM_CHANGE as u8,
+            MidiStatus::PROGRAM_CHANGE as u8 | (ch & 0xf),
             pc & 0x7f,
             0,
         )
@@ -63,8 +40,8 @@ impl MidiMessage {
     pub fn pb(ch: u8, mut bend: u16) -> Self {
         bend += 8192;
         Self::new(
-            USB_COMMAND_PITCH_BEND_CHANGE,
-            PITCH_BEND_CHANGE | (ch & 0xf),
+            UsbMidi::USB_COMMAND_PITCH_BEND_CHANGE as u8,
+            MidiStatus::PITCH_BEND_CHANGE as u8 | (ch & 0xf),
             (bend & 0x7f) as u8,
             ((bend >> 7) & 0x7f) as u8,
         )
@@ -73,8 +50,8 @@ impl MidiMessage {
     /// Create a new Channel Pressure message
     pub fn cp(ch: u8, value: u8) -> Self {
         Self::new(
-            USB_COMMAND_CHANNEL_PRESSURE,
-            CHANNEL_PRESSURE | (ch & 0xf),
+            UsbMidi::USB_COMMAND_CHANNEL_PRESSURE as u8,
+            MidiStatus::CHANNEL_PRESSURE as u8 | (ch & 0xf),
             value & 0x7f,
             0,
         )
@@ -83,8 +60,8 @@ impl MidiMessage {
     /// Create a new Note On message
     pub fn note_on(ch: u8, note: impl Into<u8>, velocity: u8) -> Self {
         Self::new(
-            USB_COMMAND_NOTE_ON,
-            NOTE_ON | (ch & 0xf),
+            UsbMidi::USB_COMMAND_NOTE_ON as u8,
+            MidiStatus::NOTE_ON as u8 | (ch & 0xf),
             note.into() & 0x7f,
             velocity & 0x7f,
         )
@@ -93,8 +70,8 @@ impl MidiMessage {
     /// Create a new Note Off message
     pub fn note_off(ch: u8, note: impl Into<u8>) -> Self {
         Self::new(
-            USB_COMMAND_NOTE_OFF,
-            NOTE_OFF | (ch & 0xf),
+            UsbMidi::USB_COMMAND_NOTE_OFF as u8,
+            MidiStatus::NOTE_OFF as u8 | (ch & 0xf),
             note.into() & 0x7f,
             0,
         )
@@ -107,32 +84,17 @@ impl MidiMessage {
 
     /// Midi channel number
     pub fn channel(&self) -> u8 {
-        self.d0 & MIDI_CHANNEL_MASK
+        self.d0 & MidiStatus::MIDI_CHANNEL_MASK as u8
     }
 
     /// Status part of the first message byte
-    pub fn status(&self) -> u8 {
-        self.d0 & MIDI_STATUS_MASK
+    pub fn status(&self) -> MidiStatus {
+        MidiStatus::from_u8(self.d0 & MidiStatus::MIDI_STATUS_MASK as u8).unwrap()
     }
 
     /// Byte count of the message
     pub fn size(&self) -> u8 {
-        match self.port & 0x0f {
-            USB_COMMAND_SINGLE_BYTE | USB_COMMAND_SYSEX_EOX1 => 1,
-            USB_COMMAND_PROGRAM_CHANGE
-            | USB_COMMAND_CHANNEL_PRESSURE
-            | USB_COMMAND_2BYTE_SYSTEM_COMMON
-            | USB_COMMAND_SYSEX_EOX2 => 2,
-            USB_COMMAND_NOTE_OFF
-            | USB_COMMAND_NOTE_ON
-            | USB_COMMAND_POLY_KEY_PRESSURE
-            | USB_COMMAND_CONTROL_CHANGE
-            | USB_COMMAND_PITCH_BEND_CHANGE
-            | USB_COMMAND_SYSEX
-            | USB_COMMAND_SYSEX_EOX3
-            | USB_COMMAND_3BYTE_SYSTEM_COMMON => 3,
-            _ => 0,
-        }
+        UsbMidi::from_u8(self.port & 0x0f).map_or(0, |command| command.size())
     }
 
     /// Midi note value (valid when is_note() == true)
@@ -171,10 +133,8 @@ impl MidiMessage {
     }
 
     /// Pitch bend value
-    pub fn pitch_bend(&self) -> u8 {
-        let pb: u16 = (self.d1 as u16 | ((self.d2 as u16) << 7)) - 8192;
-
-        pb as u8
+    pub fn pitch_bend(&self) -> u16 {
+        (self.d1 as u16 | ((self.d2 as u16) << 7)) - 8192
     }
 
     /// Either a note-on or note-off message
@@ -184,53 +144,78 @@ impl MidiMessage {
 
     /// Checks the first byte for 0x90
     pub fn is_note_on(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK == NOTE_ON) && self.velocity() != 0
+        (self.status() == MidiStatus::NOTE_ON) && self.velocity() != 0
     }
 
     /// Checks the first byte for 0x80
     pub fn is_note_off(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK == NOTE_OFF)
-            || ((self.d0 & MIDI_STATUS_MASK == NOTE_ON) && self.velocity() == 0)
+        (self.status() == MidiStatus::NOTE_OFF)
+            || ((self.status() == MidiStatus::NOTE_ON) && self.velocity() == 0)
     }
 
     /// Is this a sysex message?
     pub fn is_sys_ex(&self) -> bool {
-        matches!(
-            self.port,
-            USB_COMMAND_SYSEX
-                | USB_COMMAND_SYSEX_EOX1
-                | USB_COMMAND_SYSEX_EOX2
-                | USB_COMMAND_SYSEX_EOX3
-        )
+        UsbMidi::from_u8(self.port & 0x0f).map_or(false, |command| command.is_sys_ex())
     }
 
     /// Is this a control change message?
     pub fn is_control_change(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK) == CONTROL_CHANGE
+        self.status() == MidiStatus::CONTROL_CHANGE
     }
 
     /// Is this a program change message?
     pub fn is_program_change(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK) == PROGRAM_CHANGE
+        self.status() == MidiStatus::PROGRAM_CHANGE
     }
 
     /// Is this a channel pressure message?
     pub fn is_channel_pressure(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK) == CHANNEL_PRESSURE
+        self.status() == MidiStatus::CHANNEL_PRESSURE
     }
 
     /// Is this a poly key pressure message?
     pub fn is_poly_key_pressure(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK) == POLY_KEY_PRESSURE
+        self.status() == MidiStatus::POLY_KEY_PRESSURE
     }
 
     /// Is this a pitch bend message?
     pub fn is_pitch_bend(&self) -> bool {
-        (self.d0 & MIDI_STATUS_MASK) == PITCH_BEND_CHANGE
+        self.status() == MidiStatus::PITCH_BEND_CHANGE
     }
 
     /// Raw bytes of message
     pub fn as_bytes(self) -> [u8; 4] {
         [self.port, self.d0, self.d1, self.d2]
+    }
+}
+
+impl UsbMidi {
+    fn size(&self) -> u8 {
+        match self {
+            UsbMidi::USB_COMMAND_SINGLE_BYTE | UsbMidi::USB_COMMAND_SYSEX_EOX1 => 1,
+            UsbMidi::USB_COMMAND_PROGRAM_CHANGE
+            | UsbMidi::USB_COMMAND_CHANNEL_PRESSURE
+            | UsbMidi::USB_COMMAND_2BYTE_SYSTEM_COMMON
+            | UsbMidi::USB_COMMAND_SYSEX_EOX2 => 2,
+            UsbMidi::USB_COMMAND_NOTE_OFF
+            | UsbMidi::USB_COMMAND_NOTE_ON
+            | UsbMidi::USB_COMMAND_POLY_KEY_PRESSURE
+            | UsbMidi::USB_COMMAND_CONTROL_CHANGE
+            | UsbMidi::USB_COMMAND_PITCH_BEND_CHANGE
+            | UsbMidi::USB_COMMAND_SYSEX
+            | UsbMidi::USB_COMMAND_SYSEX_EOX3
+            | UsbMidi::USB_COMMAND_3BYTE_SYSTEM_COMMON => 3,
+            _ => 0,
+        }
+    }
+
+    fn is_sys_ex(&self) -> bool {
+        matches!(
+            self,
+            UsbMidi::USB_COMMAND_SYSEX
+                | UsbMidi::USB_COMMAND_SYSEX_EOX1
+                | UsbMidi::USB_COMMAND_SYSEX_EOX2
+                | UsbMidi::USB_COMMAND_SYSEX_EOX3
+        )
     }
 }
