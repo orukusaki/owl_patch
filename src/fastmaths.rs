@@ -12,6 +12,8 @@
 //! These functions rely on the lookup tables being set. Either [set_default_tables] or [set_log_table] *and* [set_pow_table]
 //! Must be called before any of them are used. This is handled automatically when using the [patch] attribute macro.
 //!
+//! The `fastmaths` crate feature must be enabled if you want to use this module
+//!
 //! [patch]: crate::patch
 use crate::ffi::fastmaths::*;
 

@@ -98,6 +98,8 @@ The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 
 
 ## Crate Features
 - `talc` (default): Uses the [talc](https://crates.io/crates/talc) crate as the global allocator. If you want to use a different allocator, turn this feature off with `default-features = false`
+- `fastmaths` (default): Enables the fast approximate maths functions in the `fastmaths` module.
+- `vpo_fastmaths` (default): Use fastmaths functions in the `volts_per_octave` module to convert between Volts and Frequencies quicker (but less accurately). Requires `fastmaths`.
 
 ## Project state
 Experimental. Will probabably always be that way.
@@ -113,13 +115,13 @@ Experimental. Will probabably always be that way.
 - Send & Receive Midi messages
 - Debug messages
 - Get i/o callibration data for volts-per-octave conversions
+- Get system log / pow tables
 
 ### Todo List:
 
 - Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
 - Add support for display devices
 - Add example using `cmsis_dsp`
-- Get system log / pow tables
 - FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 
 ### Maybe pile:
