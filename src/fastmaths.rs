@@ -1,21 +1,54 @@
+//! Fast Maths functions using lookup tables
+//!
+//! # Example:
+//! ```
+//! use owl_patch::fastmaths::FastFloat as _;
+//!
+//! owl_patch::fastmaths::set_default_tables();
+//!
+//! assert_eq!(2.0.fast_pow(2.0), 4.0217195); // values are approximate!
+//! ```
+//!
+//! These functions rely on the lookup tables being set. Either [set_default_tables] or [set_log_table] *and* [set_pow_table]
+//! Must be called before any of them are used. This is handled automatically when using the [patch] attribute macro.
+//!
+//! [patch]: crate::patch
 use crate::ffi::fastmaths::*;
 
+/// Fast (approximate) maths functions
 pub trait FastFloat {
-    fn fast_pow(self, rhs: Self) -> Self;
+    /// Fast (approximate) power: `self^n`
+    fn fast_pow(self, n: Self) -> Self;
+
+    /// Fast (approximate) exp: `e^(self)`
     fn fast_exp(self) -> Self;
+
+    /// Fast (approximate) exp2: `2^(self)`
     fn fast_exp2(self) -> Self;
+
+    /// Fast (approximate) exp10 : `10^(self)`
     fn fast_exp10(self) -> Self;
-    fn fast_log(self) -> Self;
+
+    /// Fast (approximate) natural log
+    fn fast_ln(self) -> Self;
+
+    /// Fast (approximate) base 2 logarithm
     fn fast_log2(self) -> Self;
+
+    /// Fast (approximate) base 10 logarithm
     fn fast_log10(self) -> Self;
-    fn fast_atan2(self, rhs: Self) -> Self;
-    fn fast_fmod(self, rhs: Self) -> Self;
+
+    /// Fast (approximate) four quadrant arctangent
+    fn fast_atan2(self, y: Self) -> Self;
+
+    /// Fast (approximate) remainder: `self % n`
+    fn fast_fmod(self, n: Self) -> Self;
 }
 
 impl FastFloat for f32 {
     #[inline]
-    fn fast_pow(self, rhs: Self) -> Self {
-        unsafe { fast_powf(self, rhs) }
+    fn fast_pow(self, n: Self) -> Self {
+        unsafe { fast_powf(self, n) }
     }
     #[inline]
     fn fast_exp(self) -> Self {
@@ -30,7 +63,7 @@ impl FastFloat for f32 {
         unsafe { fast_exp10f(self) }
     }
     #[inline]
-    fn fast_log(self) -> Self {
+    fn fast_ln(self) -> Self {
         unsafe { fast_logf(self) }
     }
     #[inline]
@@ -42,41 +75,33 @@ impl FastFloat for f32 {
         unsafe { fast_log10f(self) }
     }
     #[inline]
-    fn fast_atan2(self, rhs: Self) -> Self {
-        unsafe { fast_atan2f(self, rhs) }
+    fn fast_atan2(self, y: Self) -> Self {
+        unsafe { fast_atan2f(self, y) }
     }
     #[inline]
-    fn fast_fmod(self, rhs: Self) -> Self {
-        unsafe { fast_fmodf(self, rhs) }
+    fn fast_fmod(self, n: Self) -> Self {
+        unsafe { fast_fmodf(self, n) }
     }
 }
 
-pub trait FastInt {
-    fn fast_log2(self) -> Self;
-}
-
-impl FastInt for u32 {
-    fn fast_log2(self) -> Self {
-        unsafe { fast_log2i(self) }
-    }
-}
-
-pub(crate) fn set_log_table(table: &'static [f32]) {
+/// Set the log table to use
+pub fn set_log_table(table: &'static [f32]) {
     unsafe { fast_log_set_table(table.as_ptr(), table.len() as core::ffi::c_int) }
 }
 
-pub(crate) fn set_pow_table(table: &'static [u32]) {
+/// Set the pow table to use
+pub fn set_pow_table(table: &'static [u32]) {
     unsafe { fast_pow_set_table(table.as_ptr(), table.len() as core::ffi::c_int) }
 }
 
 /// Set the default pow/log tables
 pub fn set_default_tables() {
-    unsafe { crate::ffi::fastmaths::setDefaultTables() }
+    unsafe { crate::ffi::fastmaths::set_default_tables() }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::fastmaths::{FastFloat, FastInt};
+    use crate::fastmaths::FastFloat;
     use std::ops::Rem;
 
     macro_rules! assert_close_enough {
@@ -119,9 +144,9 @@ mod tests {
     }
 
     #[test]
-    fn test_fast_log() {
+    fn test_fast_ln() {
         let val = 5620.1f32;
-        assert_close_enough!(val.fast_log(), val.ln());
+        assert_close_enough!(val.fast_ln(), val.ln());
     }
 
     #[test]
@@ -148,11 +173,5 @@ mod tests {
         let val = 21.7f32;
         let rhs = 3.2;
         assert_close_enough!(val.fast_fmod(rhs), val.rem(rhs));
-    }
-
-    #[test]
-    fn test_fast_log2i() {
-        let val = 92u32;
-        assert_eq!(val.fast_log2(), val.ilog2());
     }
 }

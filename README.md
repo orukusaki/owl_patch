@@ -1,6 +1,6 @@
 # Owl Patch
 Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
-```rust ignore
+```rust
 #![no_main]
 #![no_std]
 extern crate alloc;

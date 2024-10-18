@@ -23,8 +23,10 @@ bindgen = {version = "0.70.1"}
 cc = "1.1.30"
 
 [features]
-default = ["talc"]
+default = ["talc", "vpo_fastmaths"]
 talc = ["dep:talc"]
+fastmaths = []
+vpo_fastmaths = ["fastmaths"]
 
 [dev-dependencies]
 ctor = "0.2.8"

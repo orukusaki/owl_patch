@@ -1,3 +1,5 @@
+extern crate std;
+
 use crate::ffi::program_vector as ffi;
 use crate::program_vector::ProgramVector;
 use crate::program_vector::ProgramVectorChecksum;
@@ -8,6 +10,9 @@ static mut AUDIO_OUT: [i32; 64] = [0; 64];
 static mut PARAMETERS: [i16; 8] = [0; 8];
 
 pub unsafe fn program_vector() -> ProgramVector {
+    #[cfg(feature = "fastmaths")]
+    crate::fastmaths::set_default_tables();
+
     #[allow(static_mut_refs)]
     let pv = crate::program_vector::PROGRAM_VECTOR.assume_init_mut();
 
@@ -24,7 +29,7 @@ pub unsafe fn program_vector() -> ProgramVector {
     pv.error = 0;
     pv.registerPatch = None;
     pv.registerPatchParameter = None;
-    pv.programReady = None;
+    pv.programReady = Some(program_ready);
     pv.programStatus = None;
     pv.serviceCall = None;
     pv.cycles_per_block = 0;
@@ -36,4 +41,8 @@ pub unsafe fn program_vector() -> ProgramVector {
     pv.heapLocations = core::ptr::null_mut();
 
     ProgramVector::new(pv, c"test".as_ptr())
+}
+
+unsafe extern "C" fn program_ready() {
+    std::process::exit(0);
 }

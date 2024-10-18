@@ -6,7 +6,7 @@
 #include "fastlog.h"
 #include "basicmaths.h"
 
-void setDefaultTables() {
+void set_default_tables() {
     fast_pow_set_table(fast_pow_table, fast_pow_table_size);
     fast_log_set_table(fast_log_table, fast_log_table_size);
 }

@@ -52,7 +52,6 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
 
             use owl_patch::ProgramHeader;
             use owl_patch::program_vector::PROGRAM_VECTOR;
-            use owl_patch::fastmaths::set_default_tables;
 
             #[link_section = ".program_header"]
             static HEADER: ProgramHeader<{ #name_len }> =
@@ -62,16 +61,23 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
                 );
 
             #[no_mangle]
+            #[link_section = ".main0"]
             unsafe extern "Rust" fn __main() -> ! {
-
-                set_default_tables();
-
                 #[allow(static_mut_refs)]
                 super::#main_fn(super::#input_type::new(
                     // This is safe as long as nothing ever calls __main() again after the first call in reset_handler()
                     PROGRAM_VECTOR.assume_init_mut(),
                     HEADER.patch_name(),
                 ));
+            }
+        }
+
+        #[cfg(not(target_os = "none"))]
+        mod __header {
+            #[no_mangle]
+            unsafe extern "Rust" fn main() {
+                let pv = unsafe { owl_patch::test_harness::program_vector() };
+                super::#main_fn(pv);
             }
         }
 

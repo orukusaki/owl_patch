@@ -4,11 +4,7 @@ use num::FromPrimitive;
 
 use core::slice;
 
-use crate::{
-    fastmaths::{set_log_table, set_pow_table},
-    ffi::program_vector as ffi,
-    volts_per_octave::VoltsPerSample,
-};
+use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -30,7 +26,7 @@ mod meta;
 pub use meta::*;
 
 mod service_call;
-use service_call::{ServiceCall, SystemFunction, SystemTable};
+use service_call::{ServiceCall, SystemFunction};
 
 const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
 const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
@@ -122,12 +118,17 @@ impl ProgramVector {
 
         let mut service_call = ServiceCall::new(pv.serviceCall, pv.hardware_version);
 
-        if let Ok(table) = service_call.get_array(SystemTable::SystemTablePow) {
-            set_pow_table(table);
-        }
+        #[cfg(feature = "fastmaths")]
+        {
+            use service_call::SystemTable;
 
-        if let Ok(table) = service_call.get_array(SystemTable::SystemTableLog) {
-            set_log_table(table);
+            if let Ok(table) = service_call.get_array(SystemTable::SystemTablePow) {
+                crate::fastmaths::set_pow_table(table);
+            }
+
+            if let Ok(table) = service_call.get_array(SystemTable::SystemTableLog) {
+                crate::fastmaths::set_log_table(table);
+            }
         }
 
         Self {
@@ -202,3 +203,9 @@ mod talc_heap {
 
 #[cfg(all(feature = "talc", target_os = "none"))]
 pub use talc_heap::heap_bytes_used;
+
+#[cfg(all(feature = "talc", not(target_os = "none")))]
+#[doc(hidden)]
+pub fn heap_bytes_used() -> usize {
+    0
+}
