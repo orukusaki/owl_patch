@@ -42,9 +42,6 @@ pub trait FastFloat {
 
     /// Fast (approximate) four quadrant arctangent
     fn fast_atan2(self, y: Self) -> Self;
-
-    /// Fast (approximate) remainder: `self % n`
-    fn fast_fmod(self, n: Self) -> Self;
 }
 
 impl FastFloat for f32 {
@@ -79,10 +76,6 @@ impl FastFloat for f32 {
     #[inline]
     fn fast_atan2(self, y: Self) -> Self {
         unsafe { fast_atan2f(self, y) }
-    }
-    #[inline]
-    fn fast_fmod(self, n: Self) -> Self {
-        unsafe { fast_fmodf(self, n) }
     }
 }
 
@@ -168,12 +161,5 @@ mod tests {
         let val = 3.0;
         let rhs = -3.0;
         assert_close_enough!(val.fast_atan2(rhs), val.atan2(rhs));
-    }
-
-    #[test]
-    fn test_fast_fmod() {
-        let val = 21.7f32;
-        let rhs = 3.2;
-        assert_close_enough!(val.fast_fmod(rhs), val.rem(rhs));
     }
 }
