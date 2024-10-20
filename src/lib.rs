@@ -8,6 +8,8 @@ extern crate alloc;
 mod ffi;
 pub mod midi_message;
 
+#[cfg(feature = "fastmaths")]
+pub mod fastmaths;
 pub mod program_vector;
 pub mod sample_buffer;
 pub mod volts_per_octave;
@@ -44,6 +46,7 @@ use core::{
 /// #[patch("My Patch Name")]
 /// fn run(mut pv: ProgramVector) -> ! {
 /// // patch code
+/// # pv.audio().run(|_, _| {});
 /// }
 /// ```
 ///
@@ -115,6 +118,7 @@ impl<const N: usize> ProgramHeader<N> {
 
 /// Startup function
 #[cfg(target_os = "none")]
+#[link_section = ".text.Reset_Handler"]
 unsafe extern "C" fn reset_handler() {
     // These values are provided by the linker script
     extern "C" {
@@ -140,6 +144,8 @@ unsafe extern "C" fn reset_handler() {
     let bss = core::slice::from_mut_ptr_range(&raw mut _sbss..&raw mut _ebss);
     bss.fill(0);
 
+    #[cfg(feature = "fastmaths")]
+    crate::ffi::fastmaths::set_default_tables();
     // Start the program
     __main()
 }

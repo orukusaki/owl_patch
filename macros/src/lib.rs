@@ -61,6 +61,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
                 );
 
             #[no_mangle]
+            #[link_section = ".main0"]
             unsafe extern "Rust" fn __main() -> ! {
                 #[allow(static_mut_refs)]
                 super::#main_fn(super::#input_type::new(
@@ -68,6 +69,15 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
                     PROGRAM_VECTOR.assume_init_mut(),
                     HEADER.patch_name(),
                 ));
+            }
+        }
+
+        #[cfg(not(target_os = "none"))]
+        mod __header {
+            #[no_mangle]
+            unsafe extern "Rust" fn main() {
+                let pv = unsafe { owl_patch::test_harness::program_vector() };
+                super::#main_fn(pv);
             }
         }
 

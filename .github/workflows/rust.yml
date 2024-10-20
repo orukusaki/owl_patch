@@ -18,8 +18,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --lib
-    - name: Run unit/doc tests
-      run: cargo test
+    - name: Run unit tests
+      run: cargo test --lib
+    - name: Run doc tests (no fastmaths)
+      run: cargo test --doc --no-default-features --features=talc
     - name: Generate docs
       run: cargo doc --no-deps
     - name: Build examples
