@@ -116,11 +116,26 @@ impl ProgramVector {
             pv.programReady,
         );
 
+        let mut service_call = ServiceCall::new(pv.serviceCall, pv.hardware_version);
+
+        #[cfg(feature = "fastmaths")]
+        {
+            use service_call::SystemTable;
+
+            if let Ok(table) = service_call.get_array(SystemTable::SystemTablePow) {
+                crate::fastmaths::set_pow_table(table);
+            }
+
+            if let Ok(table) = service_call.get_array(SystemTable::SystemTableLog) {
+                crate::fastmaths::set_log_table(table);
+            }
+        }
+
         Self {
             parameters,
             meta,
             audio,
-            service_call: ServiceCall::new(pv.serviceCall, pv.hardware_version),
+            service_call,
             midi: None,
             volts_per_octave: None,
         }
@@ -188,3 +203,9 @@ mod talc_heap {
 
 #[cfg(all(feature = "talc", target_os = "none"))]
 pub use talc_heap::heap_bytes_used;
+
+#[cfg(all(feature = "talc", not(target_os = "none")))]
+#[doc(hidden)]
+pub fn heap_bytes_used() -> usize {
+    0
+}

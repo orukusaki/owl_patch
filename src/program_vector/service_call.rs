@@ -5,7 +5,7 @@ use ::core::{
     ffi::{c_int, c_void},
     option::Option,
 };
-use core::{ptr::NonNull, slice};
+use core::{ffi::CStr, ptr::NonNull, slice};
 
 use super::OWL_MODULAR_HARDWARE;
 
@@ -29,7 +29,7 @@ pub enum SystemTable {
 }
 
 impl SystemTable {
-    fn code(self) -> &'static [u8; 4] {
+    fn code(self) -> &'static CStr {
         match self {
             SystemTable::SystemTableLog => ffi::SYSTEM_TABLE_LOG,
             SystemTable::SystemTablePow => ffi::SYSTEM_TABLE_POW,
@@ -43,7 +43,7 @@ pub enum SystemFunction {
 }
 
 impl SystemFunction {
-    fn code(self) -> &'static [u8; 4] {
+    fn code(self) -> &'static CStr {
         match self {
             SystemFunction::SystemFunctionDraw => ffi::SYSTEM_FUNCTION_DRAW,
             SystemFunction::SystemFunctionMidi => ffi::SYSTEM_FUNCTION_MIDI,

@@ -1,12 +1,14 @@
 [package]
 name = "owl_patch"
+description = "Rust SDK for Rebel Technology Owl2/3 devices"
 version = "0.1.0"
 edition = "2021"
-authors = ["orukusaki"]
+authors = ["Peter Smith <peter@orukusaki.co.uk>"]
 license = "MIT OR Apache-2.0"
 keywords = ["dsp", "embedded", "synthesizer", "audio", "owl"]
 categories = ["multimedia::audio", "no-std", "embedded"]
 exclude = ["OwlProgram"]
+repository = "https://github.com/orukusaki/owl_patch"
 
 [dependencies]
 num = {version = "0.4", default-features = false}
@@ -17,8 +19,14 @@ spin = "0.9.8"
 owl_patch_macros = {path = "./macros"}
 
 [build-dependencies]
-bindgen = "0.65.1"
+bindgen = {version = "0.70.1"}
+cc = "1.1.30"
 
 [features]
-default = ["talc"]
+default = ["talc", "vpo_fastmaths"]
 talc = ["dep:talc"]
+fastmaths = []
+vpo_fastmaths = ["fastmaths"]
+
+[dev-dependencies]
+ctor = "0.2.8"
