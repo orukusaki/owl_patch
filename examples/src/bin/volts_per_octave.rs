@@ -8,7 +8,7 @@ use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, Midi, Parameters, ProgramVector},
     sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
-    volts_per_octave::{Frequency, Note, Volts, VoltsPerSample},
+    volts_per_octave::{Note, Volts, VoltsPerSample},
     PatchButtonId, PatchParameterId,
 };
 
@@ -50,13 +50,12 @@ fn run(mut pv: ProgramVector) -> ! {
 
         if let Some(mut right) = buffer.right_mut() {
             // Update the right side value whenever gate 2 is open
-            // if parameters.get_button(GATE_IN_B) {
-            let raw_value = right.iter().sum::<f32>() / audio_settings.blocksize as f32;
-            let note: Note = (vps_in * raw_value).into();
-            let freq: Frequency = note.into();
-            let volts = Volts::from(freq);
-            right_level = volts / vps_out;
-            // }
+            if parameters.get_button(GATE_IN_B) {
+                let raw_value = right.iter().sum::<f32>() / audio_settings.blocksize as f32;
+                let note: Note = (vps_in * raw_value).into();
+                let volts: Volts = note.into();
+                right_level = volts / vps_out;
+            }
 
             right.fill(right_level);
         }
