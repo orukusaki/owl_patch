@@ -148,9 +148,7 @@ fn generate_bindings(cpp_source: &Path, out_path: &Path, lib_source: &Path) {
     // let bindings = bindgen::Builder::default()
     //     .header(lib_source.join("basicmaths.h").to_str().unwrap())
     //     .allowlist_function("fast_.*")
-    //     .allowlist_function("arm_.*")
     //     .use_core()
-    //     .prepend_enum_name(false)
     //     .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
     //     .clang_args([&format!("-I{}", cpp_source.to_str().unwrap())])
     //     .generate()
@@ -203,7 +201,7 @@ fn compile_c_lib(
         ]
     };
 
-    copy("tables.c", out_path.join("tables.c")).expect("failed to copy tables.c");
+    copy("c_src/tables.c", out_path.join("tables.c")).expect("failed to copy tables.c");
 
     in_dir(out_path, || {
         let mut c_builder = cc::Build::new();
