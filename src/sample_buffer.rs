@@ -7,14 +7,11 @@ extern crate alloc;
 
 use core::{
     marker::PhantomData,
-    ops::{
-        Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub,
-        SubAssign,
-    },
+    ops::{AddAssign, Deref, DerefMut, DivAssign, MulAssign, Neg, RemAssign, SubAssign},
 };
 
 use alloc::{boxed::Box, vec::Vec};
-use num_traits::{MulAdd, MulAddAssign};
+use num_traits::MulAddAssign;
 
 /// Sample / Buffer conversion trait
 pub trait ConvertFrom<T: ?Sized> {
@@ -108,8 +105,9 @@ pub trait Container: AsRef<[Self::Item]> {
     type Item;
 }
 
-/// Container type for samples, but it's mutable
-pub trait MutableContainer: Container + AsMut<[Self::Item]> {}
+impl<T> Container for [T] {
+    type Item = T;
+}
 
 impl<T> Container for &[T] {
     type Item = T;
@@ -127,6 +125,8 @@ impl<T> Container for Vec<T> {
     type Item = T;
 }
 
+/// Container type for samples, but it's mutable
+pub trait MutableContainer: Container + AsMut<[Self::Item]> {}
 impl<T> MutableContainer for &mut [T] {}
 impl<T> MutableContainer for Box<[T]> {}
 impl<T> MutableContainer for Vec<T> {}
@@ -149,6 +149,13 @@ pub struct Buffer<S: StoragePattern, C: Container> {
 
 impl<F: Default + Clone> Buffer<Mono, Box<[F]>> {
     /// Create a new mono buffer, with owned samples (allocates)
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::Buffer;
+    /// let buffer = Buffer::new_mono(4);
+    ///
+    /// assert_eq!(&[0.0f32; 4], buffer.samples());
+    /// ```
     pub fn new_mono(blocksize: usize) -> Self {
         let mut samples = Vec::with_capacity(blocksize);
 
@@ -165,6 +172,13 @@ impl<F: Default + Clone> Buffer<Mono, Box<[F]>> {
 
 impl<F: Default + Clone, S: StoragePattern> Buffer<S, Box<[F]>> {
     /// Create a new buffer, allocating a boxed slice to hold sample data
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let buffer: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// buffer.channels().for_each(|ch| assert_eq!(&[0.0f32; 4], ch.samples()));
+    /// ```
     pub fn new(channels: usize, blocksize: usize) -> Self {
         let len = channels * blocksize;
         let mut samples = Vec::with_capacity(len);
@@ -181,15 +195,27 @@ impl<F: Default + Clone, S: StoragePattern> Buffer<S, Box<[F]>> {
 }
 
 impl<'a, F, S: StoragePattern> Buffer<S, &'a [F]> {
-    /// Create a new buffer holding a reference to data allocated externally, read-only
-    pub fn new_ref<C: Container<Item = F>>(
-        channels: usize,
-        blocksize: usize,
-        samples: &'a C,
-    ) -> Self {
-        assert_eq!(channels * blocksize, samples.as_ref().len());
+    /// Create a new buffer holding a reference to read-only data allocated externally.
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data = [0.0f32; 8];
+    /// let buffer: Buffer::<Channels, _> = Buffer::new_ref(2, 4, &data);
+    ///
+    /// buffer.channels().for_each(|ch| assert_eq!(&[0.0; 4], ch.samples()));
+    /// ```
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data = vec![0.0f32; 8];
+    /// let buffer: Buffer::<Channels, _> = Buffer::new_ref(2, 4, &data);
+    ///
+    /// buffer.channels().for_each(|ch| assert_eq!(&[0.0; 4], ch.samples()));
+    /// ```
+    pub fn new_ref(channels: usize, blocksize: usize, samples: &'a [F]) -> Self {
+        assert_eq!(channels * blocksize, samples.len());
         Self {
-            samples: samples.as_ref(),
+            samples,
             channels,
             blocksize,
             _storage: PhantomData,
@@ -198,15 +224,29 @@ impl<'a, F, S: StoragePattern> Buffer<S, &'a [F]> {
 }
 
 impl<'a, F, S: StoragePattern> Buffer<S, &'a mut [F]> {
-    /// Create a new buffer holding a reference to mutable data allocated externally
-    pub fn new_mut<C: MutableContainer<Item = F>>(
-        channels: usize,
-        blocksize: usize,
-        samples: &'a mut C,
-    ) -> Self {
-        assert_eq!(channels * blocksize, samples.as_mut().len());
+    /// Create a new buffer holding a mutable reference to data allocated externally
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut data = [0.0f32; 8];
+    /// let mut buffer: Buffer::<Channels, _> = Buffer::new_mut(2, 4, &mut data);
+    ///
+    /// buffer += 1.0;
+    /// buffer.channels().for_each(|ch| assert_eq!(&[1.0; 4], ch.samples()));
+    /// ```
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut data = vec![0.0f32; 8];
+    /// let mut buffer: Buffer::<Channels, _> = Buffer::new_mut(2, 4, &mut data);
+    ///
+    /// buffer += 1.0;
+    /// buffer.channels().for_each(|ch| assert_eq!(&[1.0; 4], ch.samples()));
+    /// ```
+    pub fn new_mut(channels: usize, blocksize: usize, samples: &'a mut [F]) -> Self {
+        assert_eq!(channels * blocksize, samples.len());
         Self {
-            samples: samples.as_mut(),
+            samples,
             channels,
             blocksize,
             _storage: PhantomData,
@@ -214,10 +254,46 @@ impl<'a, F, S: StoragePattern> Buffer<S, &'a mut [F]> {
     }
 }
 
-impl<C: Container> Buffer<Mono, C> {
-    /// Create a new mono buffer with borrowed samples
-    pub fn mono_ref(samples: C) -> Self {
-        let len = samples.as_ref().len();
+impl<S: StoragePattern, C: MutableContainer> Buffer<S, C> {
+    /// Create a new buffer from mutable data allocated externally (taking ownership).
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data: Vec<f32> = vec![0.0f32; 8];
+    /// let buffer: Buffer::<Channels, _> = Buffer::new_from(2, 4, data);
+    ///
+    /// buffer.channels().for_each(|ch| assert_eq!(&[0.0; 4], ch.samples()));
+    /// ```
+    ///
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data: Box<[f32]> = vec![0.0f32; 8].into_boxed_slice();
+    /// let buffer: Buffer::<Interleaved, _> = Buffer::new_from(2, 4, data);
+    ///
+    /// buffer.frames().for_each(|frame| assert_eq!(&[0.0; 2], frame));
+    /// ```
+    pub fn new_from(channels: usize, blocksize: usize, samples: C) -> Self {
+        assert_eq!(channels * blocksize, samples.as_ref().len());
+        Self {
+            samples,
+            channels,
+            blocksize,
+            _storage: PhantomData,
+        }
+    }
+}
+
+impl<'a, F> Buffer<Mono, &'a [F]> {
+    /// Create a new mono buffer with borrowed samples.
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data = vec![0.0f32; 8];
+    /// let buffer = Buffer::mono_ref(&data);
+    ///
+    /// assert_eq!(&[0.0; 8], buffer.samples());
+    /// ```
+    pub fn mono_ref(samples: &'a [F]) -> Self {
+        let len = samples.len();
         Self {
             samples,
             channels: 1,
@@ -227,10 +303,17 @@ impl<C: Container> Buffer<Mono, C> {
     }
 }
 
-impl<C: MutableContainer> Buffer<Mono, C> {
-    /// Create a new mono buffer with mutably borrowed samples
-    pub fn mono_mut(samples: C) -> Self {
-        let len = samples.as_ref().len();
+impl<'a, F> Buffer<Mono, &'a mut [F]> {
+    /// Create a new mono buffer with mutably borrowed samples.
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut data: Box<[f32]> = vec![0.0f32; 8].into_boxed_slice();
+    /// let mut buffer = Buffer::mono_mut(&mut data);
+    /// buffer += 1.0;
+    /// assert_eq!(&[1.0; 8], &data.as_ref());
+    /// ```
+    pub fn mono_mut(samples: &'a mut [F]) -> Self {
+        let len = samples.len();
         Self {
             samples,
             channels: 1,
@@ -241,21 +324,45 @@ impl<C: MutableContainer> Buffer<Mono, C> {
 }
 
 impl<S: StoragePattern, C: Container> Buffer<S, C> {
-    /// Get a reference to all samples in the buffer
-    /// Whether they are interleaved or not depends on the buffer's type
+    /// Get a reference to all samples in the buffer.
+    ///
+    /// Whether they are interleaved or not depends on the buffer's type.
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut buffer1: Buffer::<Channels, _> = Buffer::new(2, 2);
+    ///
+    /// buffer1.channels_mut().enumerate().for_each(|(n, mut ch)| ch += n as f32);
+    /// assert_eq!(&[0.0f32, 0.0, 1.0, 1.0], buffer1.samples());
+    ///
+    /// let mut buffer2: Buffer::<Interleaved, _> = Buffer::new(2, 2);
+    /// buffer2.convert_from(&buffer1);
+    ///
+    /// assert_eq!(&[0.0f32, 1.0, 0.0, 1.0], buffer2.samples());
+    /// ```
     pub fn samples(&self) -> &[C::Item] {
         self.samples.as_ref()
     }
 }
 
 impl<S: StoragePattern, C: MutableContainer> Buffer<S, C> {
-    /// Get a mutable reference to all samples in the buffer
-    /// Whether they are interleaved or not depends on the buffer's type
+    /// Get a mutable reference to all samples in the buffer.
+    ///
+    /// Whether they are interleaved or not depends on the buffer's type.
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut buffer: Buffer::<Channels, _> = Buffer::new(2, 2);
+    ///
+    /// buffer.samples_mut().copy_from_slice(&[0.0, 1.0, 2.0, 3.0]);
+    ///
+    /// assert_eq!(&[0.0, 1.0], buffer.left().unwrap().samples());
+    /// assert_eq!(&[2.0, 3.0], buffer.right().unwrap().samples());
+    /// ```
     pub fn samples_mut(&mut self) -> &mut [C::Item] {
         self.samples.as_mut()
     }
 }
 
+#[doc(hidden)]
 impl<C: Container> Deref for Buffer<Mono, C> {
     type Target = [C::Item];
 
@@ -264,6 +371,7 @@ impl<C: Container> Deref for Buffer<Mono, C> {
     }
 }
 
+#[doc(hidden)]
 impl<C: MutableContainer> DerefMut for Buffer<Mono, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.samples_mut()
@@ -272,12 +380,26 @@ impl<C: MutableContainer> DerefMut for Buffer<Mono, C> {
 
 impl<C: Container> Buffer<Interleaved, C> {
     /// Get an iterator over the samples for each frame
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let buffer: Buffer::<Interleaved, _> = Buffer::new(2, 32);
+    ///
+    /// buffer.frames().for_each(|frame| assert_eq!(&[0.0; 2], frame));
+    /// ```
     pub fn frames(&self) -> impl Iterator<Item = &[C::Item]> {
         self.samples.as_ref().chunks(self.channels)
     }
 }
 impl<C: MutableContainer> Buffer<Interleaved, C> {
     /// Get a mutable iterator over the samples for each frame
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut buffer: Buffer::<Interleaved, _> = Buffer::new(2, 2);
+    ///
+    /// buffer.frames_mut().for_each(|frame| frame.copy_from_slice(&[1.0, 2.0]));
+    ///
+    /// assert_eq!(&[1.0f32, 2.0, 1.0, 2.0], buffer.samples());
+    /// ```
     pub fn frames_mut(&mut self) -> impl Iterator<Item = &mut [C::Item]> {
         self.samples.as_mut().chunks_mut(self.channels)
     }
@@ -285,6 +407,12 @@ impl<C: MutableContainer> Buffer<Interleaved, C> {
 
 impl<C: Container> Buffer<Channels, C> {
     /// Get an iterator over the samples for each channel
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let buffer: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// buffer.channels().for_each(|ch| assert_eq!(&[0.0; 4], ch.samples()));
+    /// ```
     pub fn channels(&self) -> impl Iterator<Item = Buffer<Mono, &[C::Item]>> {
         self.samples
             .as_ref()
@@ -293,11 +421,37 @@ impl<C: Container> Buffer<Channels, C> {
     }
 
     /// Get the samples in the left channel as a readonly mono buffer
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let buffer: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// assert!(buffer.left().is_some());
+    /// if let Some(left) = buffer.left() {
+    ///     assert_eq!(&[0.0; 4], left.samples())
+    /// }
+    /// ```
     pub fn left(&self) -> Option<Buffer<Mono, &[C::Item]>> {
         self.channels().take(1).next()
     }
 
     /// Get the samples in the right channel as a readonly mono buffer
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let buffer: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// assert!(buffer.right().is_some());
+    /// if let Some(right) = buffer.right() {
+    ///     assert_eq!(&[0.0; 4], right.samples())
+    /// }
+    /// ```
+    ///
+    /// None will be returned if the buffer doesn't have at least 2 channels
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let buffer: Buffer::<Channels, Box<[f32]>> = Buffer::new(1, 4);
+    ///
+    /// assert!(buffer.right().is_none());
+    /// ```
     pub fn right(&self) -> Option<Buffer<Mono, &[C::Item]>> {
         self.channels().skip(1).take(1).next()
     }
@@ -305,6 +459,13 @@ impl<C: Container> Buffer<Channels, C> {
 
 impl<C: MutableContainer> Buffer<Channels, C> {
     /// Get a mutable iterator over the samples for each channel
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut buffer: Buffer::<Channels, _> = Buffer::new(2, 2);
+    ///
+    /// buffer.channels_mut().enumerate().for_each(|(n, mut ch)| ch += n as f32);
+    /// assert_eq!(&[0.0f32, 0.0, 1.0, 1.0], buffer.samples());
+    /// ```
     pub fn channels_mut(&mut self) -> impl Iterator<Item = Buffer<Mono, &mut [C::Item]>> {
         self.samples
             .as_mut()
@@ -313,17 +474,34 @@ impl<C: MutableContainer> Buffer<Channels, C> {
     }
 
     /// Get the samples in the left channel as a mutable mono buffer
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut buffer: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// if let Some(mut left) = buffer.left_mut() {
+    ///     left.samples_mut().fill(1.0);
+    /// }
+    /// assert_eq!(&[1.0f32, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], buffer.samples());
+    /// ```
     pub fn left_mut(&mut self) -> Option<Buffer<Mono, &mut [C::Item]>> {
         self.channels_mut().take(1).next()
     }
 
     /// Get the samples in the right channel as a mutable mono buffer
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let mut buffer: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// if let Some(mut right) = buffer.right_mut() {
+    ///     right.samples_mut().fill(1.0);
+    /// }
+    /// assert_eq!(&[0.0f32, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0,], buffer.samples());
+    /// ```
     pub fn right_mut(&mut self) -> Option<Buffer<Mono, &mut [C::Item]>> {
         self.channels_mut().skip(1).take(1).next()
     }
 }
 
-// Converting from a slice of data - the storage type is assumed to be the same
 impl<F2, S, C> ConvertFrom<&[F2]> for Buffer<S, C>
 where
     C: MutableContainer,
@@ -331,6 +509,15 @@ where
     S: StoragePattern,
     F2: Copy,
 {
+    /// Convert from a slice of data - the storage type is assumed to be the same
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data = [i32::MIN, 0, i32::MAX, 0, i32::MIN, 0, i32::MAX, 0];
+    /// let mut buffer: Buffer::<Channels, Box<[f32]>> = Buffer::new(2, 4);
+    /// buffer.convert_from(&data[..]);
+    ///
+    /// assert_eq!(&[-1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0], buffer.samples());
+    /// ```
     fn convert_from(&mut self, other: &[F2]) {
         assert_eq!(self.samples.as_ref().len(), other.len());
         for (o, i) in self.samples.as_mut().iter_mut().zip(other.iter()) {
@@ -339,7 +526,6 @@ where
     }
 }
 
-// Converting from same storage type just means running the sample convertion for every sample
 impl<S, C1, C2> ConvertFrom<&Buffer<S, C2>> for Buffer<S, C1>
 where
     S: StoragePattern,
@@ -348,12 +534,22 @@ where
     C1: MutableContainer,
     C2: Container,
 {
+    /// Convert from another buffer with the same storage type (but maybe different sample format)
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    /// let data = [i32::MIN, 0, i32::MAX, 0, i32::MIN, 0, i32::MAX, 0];
+    /// let buffer1: Buffer::<Channels, _> = Buffer::new_ref(2, 4, &data);
+    /// let mut buffer2: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// buffer2.convert_from(&buffer1);
+    ///
+    /// assert_eq!(&[-1.0f32, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0], buffer2.samples());
+    /// ```
     fn convert_from(&mut self, other: &Buffer<S, C2>) {
         self.convert_from(other.samples.as_ref());
     }
 }
 
-// Converting to a slice of data
 impl<F, S, C> ConvertFrom<&Buffer<S, C>> for &mut [F]
 where
     C::Item: Copy,
@@ -361,6 +557,16 @@ where
     S: StoragePattern,
     F: ConvertFrom<C::Item>,
 {
+    /// Convert to a slice of data
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    ///
+    /// let buffer: Buffer::<Channels, _> = Buffer::new_from(2, 4, vec![-1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0]);
+    /// let mut output = [0i32; 8];
+    /// output.as_mut_slice().convert_from(&buffer);
+    ///
+    /// assert_eq!([i32::MIN, 0, i32::MAX, 0, i32::MIN, 0, i32::MAX, 0], output);
+    /// ```
     fn convert_from(&mut self, other: &Buffer<S, C>) {
         assert_eq!(self.len(), other.samples.as_ref().len());
         for (o, i) in self.iter_mut().zip(other.samples.as_ref().iter()) {
@@ -369,7 +575,7 @@ where
     }
 }
 
-// Channels -> Interleaved
+//
 impl<C1, C2> ConvertFrom<&Buffer<Channels, C2>> for Buffer<Interleaved, C1>
 where
     C1: MutableContainer,
@@ -377,20 +583,27 @@ where
     C1::Item: ConvertFrom<C2::Item>,
     C2::Item: Copy,
 {
+    /// Convert from Channels to Interleaved
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    ///
+    /// let buffer1: Buffer::<Channels, _> = Buffer::new_from(2, 4, vec![-1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0]);
+    /// let mut buffer2: Buffer::<Interleaved, _> = Buffer::new(2, 4);
+    ///
+    /// buffer2.convert_from(&buffer1);
+    ///
+    /// assert_eq!(&[i32::MIN, i32::MIN, 0, 0, i32::MAX, i32::MAX, 0, 0], buffer2.samples());
+    /// ```
     fn convert_from(&mut self, other: &Buffer<Channels, C2>) {
         assert_eq!(self.channels, other.channels);
         for (n, ch) in other.channels().enumerate() {
-            let it = self
-                .samples
+            self.samples
                 .as_mut()
                 .iter_mut()
                 .skip(n)
                 .step_by(self.channels)
-                .zip(ch.samples());
-
-            for (s, os) in it {
-                s.convert_from(*os);
-            }
+                .zip(ch.samples())
+                .for_each(|(s, os)| s.convert_from(*os));
         }
     }
 }
@@ -403,26 +616,34 @@ where
     C1::Item: ConvertFrom<C2::Item>,
     C2::Item: Copy,
 {
+    /// Convert from Interleaved to Channels
+    /// ```
+    /// # use owl_patch::sample_buffer::*;
+    ///
+    /// let buffer1: Buffer::<Interleaved, _> = Buffer::new_from(2, 4, vec![-1.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0]);
+    /// let mut buffer2: Buffer::<Channels, _> = Buffer::new(2, 4);
+    ///
+    /// buffer2.convert_from(&buffer1);
+    ///
+    /// assert_eq!(&[i32::MIN, 0, i32::MAX, 0, i32::MIN, 0, i32::MAX, 0], buffer2.samples());
+    /// ```
     fn convert_from(&mut self, other: &Buffer<Interleaved, C2>) {
         assert_eq!(self.channels, other.channels);
         for (n, mut ch) in self.channels_mut().enumerate() {
-            let it = other
+            other
                 .samples
                 .as_ref()
                 .iter()
                 .skip(n)
                 .step_by(other.channels)
-                .zip(ch.samples_mut());
-
-            for (os, s) in it {
-                s.convert_from(*os);
-            }
+                .zip(ch.samples_mut())
+                .for_each(|(os, s)| s.convert_from(*os));
         }
     }
 }
 
 macro_rules! impl_op {
-    ($assign_trait:ident, $assign_method:ident, $short_trait:ident, $short_method:ident) => {
+    ($assign_trait:ident, $assign_method:ident) => {
         impl<F, S, C> $assign_trait<F> for Buffer<S, C>
         where
             F: $assign_trait<F> + Copy + Default,
@@ -449,27 +670,14 @@ macro_rules! impl_op {
                 }
             }
         }
-
-        impl<F, U, S: StoragePattern, C: MutableContainer<Item = F>> $short_trait<U>
-            for Buffer<S, C>
-        where
-            Self: $assign_trait<U>,
-        {
-            type Output = Self;
-
-            fn $short_method(mut self, rhs: U) -> Self::Output {
-                self.$assign_method(rhs);
-                self
-            }
-        }
     };
 }
 
-impl_op!(AddAssign, add_assign, Add, add);
-impl_op!(SubAssign, sub_assign, Sub, sub);
-impl_op!(MulAssign, mul_assign, Mul, mul);
-impl_op!(DivAssign, div_assign, Div, div);
-impl_op!(RemAssign, rem_assign, Rem, rem);
+impl_op!(AddAssign, add_assign);
+impl_op!(SubAssign, sub_assign);
+impl_op!(MulAssign, mul_assign);
+impl_op!(DivAssign, div_assign);
+impl_op!(RemAssign, rem_assign);
 
 impl<F, S, C> MulAddAssign<F, F> for Buffer<S, C>
 where
@@ -526,19 +734,6 @@ where
         // Seems to be faster than doing it in a single loop - on m4 and m7
         self.mul_assign(a);
         self.add_assign(b);
-    }
-}
-
-impl<F, F1, F2, S, C> MulAdd<F1, F2> for Buffer<S, C>
-where
-    Self: MulAddAssign<F1, F2>,
-    S: StoragePattern,
-    C: MutableContainer<Item = F>,
-{
-    type Output = Self;
-    fn mul_add(mut self, a: F1, b: F2) -> Self::Output {
-        self.mul_add_assign(a, b);
-        self
     }
 }
 
