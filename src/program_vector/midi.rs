@@ -62,9 +62,7 @@ static RECEIVE_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(MidiMessage) + Send>
     Mutex::new(RefCell::new(None));
 
 pub extern "C" fn midi_receive(port: u8, status: u8, d1: u8, d2: u8) {
-    let mut cb = RECEIVE_CALLBACK.lock().take();
-    if let Some(ref mut callback) = cb {
+    if let Some(callback) = RECEIVE_CALLBACK.lock().borrow_mut().as_mut() {
         callback(MidiMessage::new(port, status, d1, d2));
     }
-    RECEIVE_CALLBACK.lock().replace(cb);
 }

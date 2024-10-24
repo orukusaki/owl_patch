@@ -143,9 +143,11 @@ static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u
     Mutex::new(RefCell::new(None));
 
 pub extern "C" fn button_changed(bid: u8, state: u16, samples: u16) {
-    let mut cb = BUTTON_CALLBACK.lock().take();
-    if let Some(ref mut callback) = cb {
-        callback(PatchButtonId::from_u8(bid).unwrap(), state, samples);
+    if let Some(callback) = BUTTON_CALLBACK.lock().borrow_mut().as_mut() {
+        callback(
+            PatchButtonId::from_u8(bid).unwrap_or(PatchButtonId::BUTTON_1),
+            state,
+            samples,
+        );
     }
-    BUTTON_CALLBACK.lock().replace(cb);
 }
