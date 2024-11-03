@@ -1,7 +1,4 @@
 //! Audio Sample Buffers
-//!
-//! Buffers to store audio samples during processing.
-//!
 
 extern crate alloc;
 
@@ -10,6 +7,7 @@ use core::{
     ops::{AddAssign, Deref, DerefMut, DivAssign, MulAssign, Neg, RemAssign, SubAssign},
 };
 
+use alloc::vec;
 use alloc::{boxed::Box, vec::Vec};
 use num_traits::MulAddAssign;
 
@@ -127,9 +125,7 @@ impl<T> Container for Vec<T> {
 
 /// Container type for samples, but it's mutable
 pub trait MutableContainer: Container + AsMut<[Self::Item]> {}
-impl<T> MutableContainer for &mut [T] {}
-impl<T> MutableContainer for Box<[T]> {}
-impl<T> MutableContainer for Vec<T> {}
+impl<T> MutableContainer for T where T: Container + AsMut<[Self::Item]> {}
 
 /// Sample buffer
 ///
@@ -157,9 +153,7 @@ impl<F: Default + Clone> Buffer<Mono, Box<[F]>> {
     /// assert_eq!(&[0.0f32; 4], buffer.samples());
     /// ```
     pub fn new_mono(blocksize: usize) -> Self {
-        let mut samples = Vec::with_capacity(blocksize);
-
-        samples.resize(blocksize, F::default());
+        let samples = vec![F::default(); blocksize];
 
         Self {
             samples: samples.into_boxed_slice(),
@@ -180,11 +174,7 @@ impl<F: Default + Clone, S: StoragePattern> Buffer<S, Box<[F]>> {
     /// buffer.channels().for_each(|ch| assert_eq!(&[0.0f32; 4], ch.samples()));
     /// ```
     pub fn new(channels: usize, blocksize: usize) -> Self {
-        let len = channels * blocksize;
-        let mut samples = Vec::with_capacity(len);
-
-        samples.resize(len, F::default());
-
+        let samples = vec![F::default(); channels * blocksize];
         Self {
             samples: samples.into_boxed_slice(),
             channels,
