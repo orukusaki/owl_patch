@@ -1,7 +1,5 @@
 extern crate proc_macro;
 
-use std::ffi::CString;
-
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
@@ -42,8 +40,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
         _ => return sig_error(&f),
     };
 
-    let patch_name = CString::new(parse_macro_input!(attr as LitStr).value()).unwrap();
-    let name_len = patch_name.as_bytes_with_nul().len();
+    let patch_name = parse_macro_input!(attr as LitStr).value();
     let main_fn = &f.sig.ident;
 
     quote!(
@@ -54,7 +51,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
             use owl_patch::program_vector::PROGRAM_VECTOR;
 
             #[link_section = ".program_header"]
-            static HEADER: ProgramHeader<{ #name_len }> =
+            static HEADER: ProgramHeader =
                 ProgramHeader::new(
                     #patch_name,
                     &raw const PROGRAM_VECTOR,

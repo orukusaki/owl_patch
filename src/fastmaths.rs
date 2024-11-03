@@ -97,7 +97,6 @@ pub fn set_default_tables() {
 #[cfg(test)]
 mod tests {
     use crate::fastmaths::FastFloat;
-    use std::ops::Rem;
 
     macro_rules! assert_close_enough {
         ($a:expr, $b:expr) => {

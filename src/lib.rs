@@ -25,7 +25,7 @@ pub mod test_harness;
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{c_char, c_void},
     mem::MaybeUninit,
 };
 
@@ -58,12 +58,15 @@ pub use owl_patch_macros::patch;
 #[cfg(target_os = "none")]
 #[panic_handler]
 unsafe fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    program_vector::error(&alloc::format!("{}", info.message()))
+    match info.message().as_str() {
+        Some(m) => program_vector::error(&m),
+        None => program_vector::error(&alloc::format!("{}", info.message())),
+    }
 }
 
 #[doc(hidden)]
 #[repr(C)]
-pub struct ProgramHeader<const N: usize> {
+pub struct ProgramHeader {
     magic_word: u32,
     start_prog: *const c_void,
     endprog: *const c_void,
@@ -71,16 +74,16 @@ pub struct ProgramHeader<const N: usize> {
     stack: *const c_void,
     estack: *const c_void,
     programvector: *const MaybeUninit<FfiProgramVector>,
-    patch_name: [u8; N],
+    patch_name: [u8; 24],
 }
 
-unsafe impl<const N: usize> Sync for ProgramHeader<N> {}
+unsafe impl Sync for ProgramHeader {}
 
-impl<const N: usize> ProgramHeader<N> {
+impl ProgramHeader {
     const MAGIC_WORD: u32 = 0xdadac0de;
 
     pub const fn new(
-        patch_name: &CStr,
+        patch_name: &str,
         programvector: *const MaybeUninit<FfiProgramVector>,
     ) -> Self {
         extern "C" {
@@ -90,11 +93,15 @@ impl<const N: usize> ProgramHeader<N> {
             static mut _estack: c_void;
         }
 
-        let mut name_bytes = [0u8; N];
-        let p = patch_name.to_bytes_with_nul();
-
+        let mut name_bytes = [0u8; 24];
+        let p = patch_name.as_bytes();
+        let len = if p.len() < name_bytes.len() {
+            p.len()
+        } else {
+            name_bytes.len()
+        };
         let mut n = 0;
-        while n < N {
+        while n < len {
             name_bytes[n] = p[n];
             n += 1;
         }
@@ -135,14 +142,17 @@ unsafe extern "C" fn reset_handler() {
     }
 
     // Copy initialised static data to RAM
-    let data = core::slice::from_ptr_range(&raw mut _sdata..&raw mut _edata);
-    let idata = core::slice::from_raw_parts_mut(&raw mut _sidata, data.len());
-
-    idata.copy_from_slice(data);
+    if &raw mut _sdata < &raw mut _edata {
+        let data = core::slice::from_ptr_range(&raw mut _sdata..&raw mut _edata);
+        let idata = core::slice::from_raw_parts_mut(&raw mut _sidata, data.len());
+        idata.copy_from_slice(data);
+    }
 
     // Zero-fill uninialised static data
-    let bss = core::slice::from_mut_ptr_range(&raw mut _sbss..&raw mut _ebss);
-    bss.fill(0);
+    if &raw mut _sbss < &raw mut _ebss {
+        let bss = core::slice::from_mut_ptr_range(&raw mut _sbss..&raw mut _ebss);
+        bss.fill(0);
+    }
 
     #[cfg(feature = "fastmaths")]
     crate::ffi::fastmaths::set_default_tables();
