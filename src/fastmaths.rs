@@ -42,6 +42,12 @@ pub trait FastFloat {
 
     /// Fast (approximate) four quadrant arctangent
     fn fast_atan2(self, y: Self) -> Self;
+
+    /// Fast (approximate) hyperbolic tangent
+    fn fast_tanh(self) -> Self;
+
+    /// Fast (approximate) coth: 1/tanh(self)
+    fn fast_coth(self) -> Self;
 }
 
 impl FastFloat for f32 {
@@ -76,6 +82,16 @@ impl FastFloat for f32 {
     #[inline]
     fn fast_atan2(self, y: Self) -> Self {
         unsafe { fast_atan2f(self, y) }
+    }
+    #[inline]
+    fn fast_tanh(self) -> Self {
+        let x_squared = self * self;
+        self / (1.0 + (x_squared / (3.0 + (x_squared / (5.0 + (x_squared / 7.0))))))
+    }
+    #[inline]
+    fn fast_coth(self) -> Self {
+        let x_squared = self * self;
+        (1.0 + (x_squared / (3.0 + (x_squared / (5.0 + (x_squared / 7.0)))))) / self
     }
 }
 
@@ -160,5 +176,17 @@ mod tests {
         let val = 3.0;
         let rhs = -3.0;
         assert_close_enough!(val.fast_atan2(rhs), val.atan2(rhs));
+    }
+
+    #[test]
+    fn test_fast_tanh() {
+        let val = 1.2;
+        assert_close_enough!(val.fast_tanh(), val.tanh());
+    }
+
+    #[test]
+    fn test_fast_coth() {
+        let val = -1.2;
+        assert_close_enough!(val.fast_coth(), 1.0 / val.tanh());
     }
 }
