@@ -377,7 +377,7 @@ impl<C: Container> Buffer<Interleaved, C> {
     /// buffer.frames().for_each(|frame| assert_eq!(&[0.0; 2], frame));
     /// ```
     pub fn frames(&self) -> impl Iterator<Item = &[C::Item]> {
-        self.samples.as_ref().chunks(self.channels)
+        self.samples.as_ref().chunks_exact(self.channels)
     }
 }
 impl<C: MutableContainer> Buffer<Interleaved, C> {
@@ -391,7 +391,7 @@ impl<C: MutableContainer> Buffer<Interleaved, C> {
     /// assert_eq!(&[1.0f32, 2.0, 1.0, 2.0], buffer.samples());
     /// ```
     pub fn frames_mut(&mut self) -> impl Iterator<Item = &mut [C::Item]> {
-        self.samples.as_mut().chunks_mut(self.channels)
+        self.samples.as_mut().chunks_exact_mut(self.channels)
     }
 }
 
