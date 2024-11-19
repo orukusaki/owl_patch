@@ -2,7 +2,9 @@
 name = "owl_patch_macros"
 version = "0.1.0"
 edition = "2021"
-authors = ["orukusaki"]
+description = "Macros for the owl_patch crate"
+authors = ["Peter Smith <peter@orukusaki.co.uk>"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 quote = "1.0"

@@ -516,6 +516,7 @@ dependencies = [
 [[package]]
 name = "owl_patch_macros"
 version = "0.1.0"
+source = "git+https://github.com/orukusaki/owl_patch#48147b8f91d7020260440a4f166b6695e75fb41e"
 dependencies = [
  "quote",
  "syn",

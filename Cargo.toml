@@ -7,7 +7,6 @@ authors = ["Peter Smith <peter@orukusaki.co.uk>"]
 license = "MIT OR Apache-2.0"
 keywords = ["dsp", "embedded", "synthesizer", "audio", "owl"]
 categories = ["multimedia::audio", "no-std", "embedded"]
-exclude = ["OwlProgram"]
 repository = "https://github.com/orukusaki/owl_patch"
 
 [dependencies]
@@ -16,7 +15,7 @@ num-derive = "0.4.2"
 num-traits = { version = "0.2.19", default-features = false,  features = ["libm"]}
 talc = {version = "4.4.1", features = ["counters"], optional = true}
 spin = "0.9.8"
-owl_patch_macros = {path = "./macros"}
+owl_patch_macros = {version = "0.1.0", git = "https://github.com/orukusaki/owl_patch"}
 
 [build-dependencies]
 bindgen = {version = "0.70.1"}
