@@ -43,7 +43,7 @@ rustup target add thumbv7em-none-eabihf
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
 [dependencies]
-owl_patch = 0.1.0
+owl_patch = 0.1.1
 ```
 It is also a good idea to add this to your Cargo.toml:
 ```toml
