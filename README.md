@@ -1,4 +1,9 @@
 # Owl Patch
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/orukusaki/owl_patch/rust.yml)](https://github.com/orukusaki/owl_patch/actions)
+[![Docs](https://img.shields.io/docsrs/owl_patch)](https://docs.rs/owl_patch/latest/owl_patch/)
+[![crates.io](https://img.shields.io/crates/v/owl_patch.svg)](https://crates.io/crates/owl_patch)
+[![License](https://img.shields.io/crates/l/owl_patch.svg)](https://github.com/orukusaki/owl_patch/README.md)
+
 Write Patches in [Rust](https://www.rust-lang.org/) for many [Rebel Technology](https://www.rebeltech.org/) devices based on the Owl2/3 modules.
 ```rust
 #![no_main]
@@ -93,8 +98,10 @@ arm-none-eabi-objcopy -O binary target/thumbv7em-none-eabihf/release/main target
 
 8. Use `FirmwareSender` to upload the patch to your device.
 
+For further help, check the [docs](https://docs.rs/owl_patch/latest/owl_patch/).
+
 ## Supported devices
-The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 module.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
+The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 modules.  They should work on others too, but I am unable to verify this.  To give you the best chance of success, make sure your device is running the latest Firmware.
 
 ## Crate Features
 - `talc` (default): Uses the [talc](https://crates.io/crates/talc) crate as the global allocator. If you want to use a different allocator, turn this feature off with `default-features = false`
