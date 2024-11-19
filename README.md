@@ -43,23 +43,21 @@ rustup target add thumbv7em-none-eabihf
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
 [dependencies]
-owl_patch = 0.1.1
+owl_patch = "0.1.2"
 ```
 It is also a good idea to add this to your Cargo.toml:
 ```toml
 [profile.release]
-strip = "debuginfo"
 codegen-units = 1
 debug = 2
 debug-assertions = false
 incremental = false
 lto = "fat"
-opt-level = "3"
+opt-level = 3
 overflow-checks = false
 
 [profile.release.package."*"]
-strip = "debuginfo"
-opt-level = "3"
+opt-level = 3
 ```
 
 4. Create a `.cargo/config.toml` file:
@@ -105,8 +103,8 @@ The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 
 
 ## Crate Features
 - `talc` (default): Uses the [talc](https://crates.io/crates/talc) crate as the global allocator. If you want to use a different allocator, turn this feature off with `default-features = false`
-- `fastmaths` (default): Enables the fast approximate maths functions in the `fastmaths` module.
-- `vpo_fastmaths` (default): Use fastmaths functions in the `volts_per_octave` module to convert between Volts and Frequencies quicker (but less accurately). Requires `fastmaths`.
+- `fastmaths` (default): Enables the fast approximate maths functions in the [fastmaths](https://docs.rs/owl_patch/latest/owl_patch/fastmaths/index.html) module.
+- `vpo_fastmaths` (default): Use fastmaths functions in the [volts_per_octave](https://docs.rs/owl_patch/latest/owl_patch/volts_per_octave/index.html) module to convert between Volts and Frequencies quicker (but less accurately). Requires `fastmaths`.
 
 ## Project state
 Experimental. Will probabably always be that way.
@@ -122,20 +120,19 @@ Experimental. Will probabably always be that way.
 - Send & Receive Midi messages
 - Debug messages
 - Get i/o callibration data for volts-per-octave conversions
-- Get system log / pow tables
+- Get system log / pow tables to perform fast maths functions
 
 ### Todo List:
 
 - Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
-- Add support for display devices
-- Add example using `cmsis_dsp`
 - FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
+- Add support for display devices
 
 ### Maybe pile:
 
 - Additional device support
-  - Invert some params for `hardware_version == OWL_MODULAR_HARDWARE`
-  - Support for lower checksum versions
+- Invert some params for `hardware_version == OWL_MODULAR_HARDWARE`
+- Support for lower checksum versions
 - Create a Cargo project template
 
 ## License

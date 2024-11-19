@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "owl_patch"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bindgen",
  "cc",
@@ -260,7 +260,8 @@ dependencies = [
 [[package]]
 name = "owl_patch_macros"
 version = "0.1.0"
-source = "git+https://github.com/orukusaki/owl_patch#48147b8f91d7020260440a4f166b6695e75fb41e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6f06096f5778ba5976687448cc38882018fb908bf90e9a5731c87f903d3e49"
 dependencies = [
  "quote",
  "syn",
