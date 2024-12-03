@@ -367,6 +367,25 @@ impl<C: MutableContainer> DerefMut for Buffer<Mono, C> {
         self.samples_mut()
     }
 }
+use num_traits::Float as _;
+//todo: make more generic
+impl<C> Buffer<Mono, C>
+where
+    C: Container<Item = f32>,
+{
+    pub fn index_lerp(&self, index: f32) -> C::Item {
+        let f = index.floor();
+        let c = index.ceil();
+        let a = c - f;
+
+        let samples = self.samples.as_ref();
+
+        let s1 = samples[f as usize];
+        let s2 = samples[c as usize % samples.len()];
+        let s = s1 + (s2 - s1) * a;
+        s
+    }
+}
 
 impl<C: Container> Buffer<Interleaved, C> {
     /// Get an iterator over the samples for each frame
@@ -379,6 +398,8 @@ impl<C: Container> Buffer<Interleaved, C> {
     pub fn frames(&self) -> impl Iterator<Item = &[C::Item]> {
         self.samples.as_ref().chunks_exact(self.channels)
     }
+
+    pub fn to_channels(self) -> Buffer<Channels, C> {}
 }
 impl<C: MutableContainer> Buffer<Interleaved, C> {
     /// Get a mutable iterator over the samples for each frame
@@ -741,5 +762,41 @@ where
         }
 
         self
+    }
+}
+
+pub struct BufferFactory {}
+impl BufferFactory {
+    pub fn new_interleaved<T: Default + Clone>(
+        channels: usize,
+        blocksize: usize,
+    ) -> Buffer<Interleaved, Box<[T]>> {
+        Buffer::new(channels, blocksize)
+    }
+    pub fn new_channels<T: Default + Clone>(
+        channels: usize,
+        blocksize: usize,
+    ) -> Buffer<Channels, Box<[T]>> {
+        Buffer::new(channels, blocksize)
+    }
+}
+
+pub fn new_interleaved<T: Default + Clone>(
+    channels: usize,
+    blocksize: usize,
+) -> Buffer<Interleaved, Box<[T]>> {
+    Buffer::new(channels, blocksize)
+}
+
+pub fn new_channels<T: Default + Clone>(
+    channels: usize,
+    blocksize: usize,
+) -> Buffer<Channels, Box<[T]>> {
+    Buffer::new_channels(channels, blocksize)
+}
+
+impl<T: Default + Clone> Buffer<Channels, Box<[T]>> {
+    pub fn new_channels(channels: usize, blocksize: usize) -> Buffer<Channels, Box<[T]>> {
+        Buffer::new(channels, blocksize)
     }
 }

@@ -2,9 +2,9 @@
 extern crate alloc;
 use num::FromPrimitive;
 
-use core::slice;
+use core::{ffi::CStr, slice};
 
-use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
+use crate::{ffi::program_vector as ffi, resource::Resource, volts_per_octave::VoltsPerSample};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -177,6 +177,10 @@ impl ProgramVector {
                 VoltsPerSample::new(parameters.output_scalar, parameters.output_offset),
             )
         })
+    }
+
+    pub fn get_resource(&self, name: &CStr) -> Result<Resource, &str> {
+        self.service_call.get_resource(name)
     }
 }
 
