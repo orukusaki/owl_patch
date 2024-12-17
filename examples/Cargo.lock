@@ -509,6 +509,7 @@ version = "0.1.0"
 dependencies = [
  "cmsis_dsp",
  "fundsp",
+ "microfft",
  "num-traits",
  "owl_patch",
 ]
