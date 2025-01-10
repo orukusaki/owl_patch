@@ -1,6 +1,5 @@
 use ::core::option::Option;
 use core::{
-    cell::RefCell,
     ffi::c_char,
     sync::atomic::{compiler_fence, Ordering},
 };
@@ -20,7 +19,7 @@ pub struct Messages {
 
 unsafe impl Send for Messages {}
 
-static INSTANCE: Mutex<RefCell<Option<Messages>>> = Mutex::new(RefCell::new(None));
+static INSTANCE: Mutex<Option<Messages>> = Mutex::new(None);
 
 impl Messages {
     pub fn init(
@@ -30,7 +29,7 @@ impl Messages {
     ) {
         INSTANCE
             .lock()
-            .replace(Some(Self::new(message, error, program_status)));
+            .replace(Self::new(message, error, program_status));
     }
 
     pub fn new(
@@ -68,14 +67,14 @@ impl Messages {
 
 /// Publish a debug message. Messages will be truncated to 63 chars
 pub fn debug_message(message: &str) {
-    if let Some(instance) = INSTANCE.lock().get_mut() {
+    if let Some(instance) = INSTANCE.lock().as_mut() {
         instance.debug_message(message)
     }
 }
 
 /// Publish an unrecoverable error - will not return
 pub fn error(message: &str) -> ! {
-    if let Some(instance) = INSTANCE.lock().get_mut() {
+    if let Some(instance) = INSTANCE.lock().as_mut() {
         instance.error(message);
     } // else { ¯\(ツ)/¯ }
 

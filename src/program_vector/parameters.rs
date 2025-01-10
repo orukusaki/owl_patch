@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use core::{cell::RefCell, ffi::c_char};
+use core::ffi::c_char;
 
 use alloc::{boxed::Box, ffi::CString};
 use num::FromPrimitive;
@@ -108,7 +108,7 @@ impl Parameters {
         &self,
         callback: impl FnMut(PatchButtonId, u16, u16) + Send + 'static,
     ) {
-        BUTTON_CALLBACK.lock().replace(Some(Box::new(callback)));
+        BUTTON_CALLBACK.lock().replace(Box::new(callback));
     }
 
     /// Get an input button value
@@ -139,11 +139,11 @@ impl Parameters {
 }
 
 #[allow(clippy::type_complexity)]
-static BUTTON_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>>> =
-    Mutex::new(RefCell::new(None));
+static BUTTON_CALLBACK: Mutex<Option<Box<dyn FnMut(PatchButtonId, u16, u16) + Send>>> =
+    Mutex::new(None);
 
 pub extern "C" fn button_changed(bid: u8, state: u16, samples: u16) {
-    if let Some(callback) = BUTTON_CALLBACK.lock().borrow_mut().as_mut() {
+    if let Some(callback) = BUTTON_CALLBACK.lock().as_mut() {
         callback(
             PatchButtonId::from_u8(bid).unwrap_or(PatchButtonId::BUTTON_1),
             state,

@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use core::{cell::RefCell, option::Option, ptr::NonNull};
+use core::{option::Option, ptr::NonNull};
 
 use alloc::boxed::Box;
 use spin::Mutex;
@@ -42,10 +42,7 @@ impl Midi {
 
     /// Register a callback which is fired whenever a midi message is received
     pub fn on_receive(&self, callback: impl FnMut(MidiMessage) + Send + 'static) {
-        RECEIVE_CALLBACK
-            .lock()
-            .borrow_mut()
-            .replace(Box::new(callback));
+        RECEIVE_CALLBACK.lock().replace(Box::new(callback));
     }
 
     /// Send a midi message
@@ -57,12 +54,10 @@ impl Midi {
     }
 }
 
-#[allow(clippy::type_complexity)]
-static RECEIVE_CALLBACK: Mutex<RefCell<Option<Box<dyn FnMut(MidiMessage) + Send>>>> =
-    Mutex::new(RefCell::new(None));
+static RECEIVE_CALLBACK: Mutex<Option<Box<dyn FnMut(MidiMessage) + Send>>> = Mutex::new(None);
 
 pub extern "C" fn midi_receive(port: u8, status: u8, d1: u8, d2: u8) {
-    if let Some(callback) = RECEIVE_CALLBACK.lock().borrow_mut().as_mut() {
+    if let Some(callback) = RECEIVE_CALLBACK.lock().as_mut() {
         callback(MidiMessage::new(port, status, d1, d2));
     }
 }
