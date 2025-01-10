@@ -99,7 +99,7 @@ impl ServiceCall {
     }
 
     pub fn register_callback(
-        &mut self,
+        &self,
         function: SystemFunction,
         callback: *mut c_void,
     ) -> Result<(), &str> {
@@ -107,7 +107,7 @@ impl ServiceCall {
         self.service_call(ServiceCallType::OwlServiceRegisterCallback, &mut args)
     }
 
-    pub fn request_callback(&mut self, function: SystemFunction) -> Result<NonNull<()>, &str> {
+    pub fn request_callback(&self, function: SystemFunction) -> Result<NonNull<()>, &str> {
         let mut callback: *mut () = core::ptr::null_mut();
         let mut args = [
             function.code().as_ptr() as *mut _,
@@ -119,7 +119,7 @@ impl ServiceCall {
             .and_then(|_| NonNull::new(callback).ok_or("bad callback"))
     }
 
-    pub fn get_array<T>(&mut self, table: SystemTable) -> Result<&'static [T], &str> {
+    pub fn get_array<T>(&self, table: SystemTable) -> Result<&'static [T], &str> {
         let mut size: usize = 0;
         let mut ptr: *mut T = core::ptr::null_mut();
         let mut args = [
@@ -133,7 +133,7 @@ impl ServiceCall {
             .map(|ptr| unsafe { slice::from_raw_parts(ptr.as_ptr(), size) })
     }
 
-    pub fn device_parameters(&mut self) -> DeviceParameters {
+    pub fn device_parameters(&self) -> DeviceParameters {
         const IN_OFFSET: &[u8; 3usize] = b"IO\0";
         const IN_SCALAR: &[u8; 3usize] = b"IS\0";
         const OUT_OFFSET: &[u8; 3usize] = b"OO\0";
@@ -172,7 +172,7 @@ impl ServiceCall {
     }
 
     fn service_call(
-        &mut self,
+        &self,
         call_type: ServiceCallType,
         args: &mut [*mut c_void],
     ) -> Result<(), &str> {

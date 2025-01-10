@@ -116,7 +116,7 @@ impl ProgramVector {
             pv.programReady,
         );
 
-        let mut service_call = ServiceCall::new(pv.serviceCall, pv.hardware_version);
+        let service_call = ServiceCall::new(pv.serviceCall, pv.hardware_version);
 
         #[cfg(feature = "fastmaths")]
         {
@@ -149,7 +149,7 @@ impl ProgramVector {
     }
 
     /// Get patch parameter controller
-    pub fn parameters(&mut self) -> Parameters {
+    pub fn parameters(&self) -> Parameters {
         self.parameters
     }
 
