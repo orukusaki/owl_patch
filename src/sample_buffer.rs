@@ -389,34 +389,6 @@ where
     }
 }
 
-impl<C> Buffer<Interleaved, C>
-where
-    C: Container,
-    C::Item: Lerp + Copy,
-{
-    /// Get sample values by partial index using linear interpolation
-    ///
-    /// Returns an iterator over the partial value for each channel.
-    pub fn index_lerp(&self, index: f32) -> impl Iterator<Item = C::Item> + use<'_, C> {
-        let (index0, index1, alpha) =
-            crate::interpolation::partial_index(index, self.blocksize as f32);
-
-        let frame0 = &self.samples.as_ref()[index0 * self.blocksize..index1 * self.blocksize];
-        let frame1 = &self.samples.as_ref()[index1 * self.blocksize..index1 * self.blocksize];
-
-        let mut i = 0;
-        core::iter::from_fn(move || {
-            let ret = if i >= self.blocksize {
-                None
-            } else {
-                Some(Lerp::lerp(frame0[i], frame1[i], alpha))
-            };
-            i += 1;
-            ret
-        })
-    }
-}
-
 impl<C: Container> Buffer<Interleaved, C> {
     /// Get an iterator over the samples for each frame
     /// ```

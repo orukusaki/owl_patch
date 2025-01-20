@@ -144,9 +144,6 @@ unsafe extern "C" fn reset_handler() {
         fn __main() -> !;
     }
 
-    // core::arch::asm!("ldr   sp, = _estack      /* set stack pointer */");
-    // core::arch::asm!("ldr   sp, = 0xD0800000      /* set stack pointer */");
-
     // Copy initialised static data to RAM
     if &raw mut _sdata < &raw mut _edata {
         let data = core::slice::from_ptr_range(&raw mut _sdata..&raw mut _edata);
