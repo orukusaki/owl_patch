@@ -11,6 +11,8 @@ use alloc::vec;
 use alloc::{boxed::Box, vec::Vec};
 use num_traits::MulAddAssign;
 
+use crate::interpolation::Lerp;
+
 /// Sample / Buffer conversion trait
 pub trait ConvertFrom<T: ?Sized> {
     /// Read from `other`, converting into the correct format
@@ -352,6 +354,7 @@ impl<S: StoragePattern, C: MutableContainer> Buffer<S, C> {
     }
 }
 
+// TODO: maybe this is a bit naughty?
 #[doc(hidden)]
 impl<C: Container> Deref for Buffer<Mono, C> {
     type Target = [C::Item];
@@ -367,23 +370,50 @@ impl<C: MutableContainer> DerefMut for Buffer<Mono, C> {
         self.samples_mut()
     }
 }
-use num_traits::Float as _;
-//todo: make more generic
+
 impl<C> Buffer<Mono, C>
 where
-    C: Container<Item = f32>,
+    C: Container,
+    C::Item: Lerp + Copy,
 {
+    /// Get sample value by partial index using linear interpolation
     pub fn index_lerp(&self, index: f32) -> C::Item {
-        let f = index.floor();
-        let c = index.ceil();
-        let a = c - f;
+        let (index0, index1, alpha) =
+            crate::interpolation::partial_index(index, self.blocksize as f32);
 
         let samples = self.samples.as_ref();
 
-        let s1 = samples[f as usize];
-        let s2 = samples[c as usize % samples.len()];
-        let s = s1 + (s2 - s1) * a;
-        s
+        let a = samples[index0];
+        let b = samples[index1];
+        Lerp::lerp(a, b, alpha)
+    }
+}
+
+impl<C> Buffer<Interleaved, C>
+where
+    C: Container,
+    C::Item: Lerp + Copy,
+{
+    /// Get sample values by partial index using linear interpolation
+    ///
+    /// Returns an iterator over the partial value for each channel.
+    pub fn index_lerp(&self, index: f32) -> impl Iterator<Item = C::Item> + use<'_, C> {
+        let (index0, index1, alpha) =
+            crate::interpolation::partial_index(index, self.blocksize as f32);
+
+        let frame0 = &self.samples.as_ref()[index0 * self.blocksize..index1 * self.blocksize];
+        let frame1 = &self.samples.as_ref()[index1 * self.blocksize..index1 * self.blocksize];
+
+        let mut i = 0;
+        core::iter::from_fn(move || {
+            let ret = if i >= self.blocksize {
+                None
+            } else {
+                Some(Lerp::lerp(frame0[i], frame1[i], alpha))
+            };
+            i += 1;
+            ret
+        })
     }
 }
 
@@ -398,8 +428,6 @@ impl<C: Container> Buffer<Interleaved, C> {
     pub fn frames(&self) -> impl Iterator<Item = &[C::Item]> {
         self.samples.as_ref().chunks_exact(self.channels)
     }
-
-    pub fn to_channels(self) -> Buffer<Channels, C> {}
 }
 impl<C: MutableContainer> Buffer<Interleaved, C> {
     /// Get a mutable iterator over the samples for each frame
@@ -762,41 +790,5 @@ where
         }
 
         self
-    }
-}
-
-pub struct BufferFactory {}
-impl BufferFactory {
-    pub fn new_interleaved<T: Default + Clone>(
-        channels: usize,
-        blocksize: usize,
-    ) -> Buffer<Interleaved, Box<[T]>> {
-        Buffer::new(channels, blocksize)
-    }
-    pub fn new_channels<T: Default + Clone>(
-        channels: usize,
-        blocksize: usize,
-    ) -> Buffer<Channels, Box<[T]>> {
-        Buffer::new(channels, blocksize)
-    }
-}
-
-pub fn new_interleaved<T: Default + Clone>(
-    channels: usize,
-    blocksize: usize,
-) -> Buffer<Interleaved, Box<[T]>> {
-    Buffer::new(channels, blocksize)
-}
-
-pub fn new_channels<T: Default + Clone>(
-    channels: usize,
-    blocksize: usize,
-) -> Buffer<Channels, Box<[T]>> {
-    Buffer::new_channels(channels, blocksize)
-}
-
-impl<T: Default + Clone> Buffer<Channels, Box<[T]>> {
-    pub fn new_channels(channels: usize, blocksize: usize) -> Buffer<Channels, Box<[T]>> {
-        Buffer::new(channels, blocksize)
     }
 }

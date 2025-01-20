@@ -248,6 +248,7 @@ version = "0.1.2"
 dependencies = [
  "bindgen",
  "cc",
+ "cfg-if",
  "ctor",
  "num",
  "num-derive",

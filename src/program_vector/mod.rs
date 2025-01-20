@@ -2,9 +2,9 @@
 extern crate alloc;
 use num::FromPrimitive;
 
-use core::{ffi::CStr, slice};
+use core::slice;
 
-use crate::{ffi::program_vector as ffi, resource::Resource, volts_per_octave::VoltsPerSample};
+use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -24,6 +24,9 @@ pub use midi::Midi;
 
 mod meta;
 pub use meta::*;
+
+mod resources;
+pub use resources::Resources;
 
 mod service_call;
 use service_call::{ServiceCall, SystemFunction};
@@ -179,8 +182,9 @@ impl ProgramVector {
         })
     }
 
-    pub fn get_resource(&self, name: &CStr) -> Result<Resource, &str> {
-        self.service_call.get_resource(name)
+    /// Get resources service
+    pub fn resources(&self) -> Resources {
+        Resources::new(&self.service_call)
     }
 }
 

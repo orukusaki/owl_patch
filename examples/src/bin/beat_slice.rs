@@ -15,19 +15,33 @@ use owl_patch::{
     sample_buffer::{Buffer, ConvertTo},
 };
 
-#[patch("Amen Chop")]
+#[patch("Beat Slicer")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
     let mut buffer: Buffer<Interleaved, Box<[f32]>> =
         Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
-    let Ok(resource) = pv.get_resource(c"AmenBreak.raw") else {
+    let resources = pv.resources();
+
+    let Ok(resource) = resources.get(c"AmenBreak.raw") else {
         error("failed to load resource");
     };
 
-    let mut sample_buffer = Buffer::new_mono(resource.len() / 2);
-    for (insamp, buffsamp) in resource
-        .as_ref()
+    let boxed_data: Box<[u8]>;
+
+    let data = if resource.is_memory_mapped() {
+        resource.data().unwrap()
+    } else {
+        let d = resources
+            .load_all(&resource)
+            .expect("failed to load resource data");
+        boxed_data = d;
+        boxed_data.as_ref()
+    };
+
+    let mut sample_buffer = Buffer::new_mono(resource.size() / 2);
+
+    for (insamp, buffsamp) in data
         .iter()
         .array_chunks::<2>()
         .map(|bytes| i16::from_le_bytes(bytes.map(|b| *b)))

@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use alloc::vec;
-
-use crate::{ffi::service_call as ffi, resource::Resource};
+use crate::ffi::service_call as ffi;
 use ::core::{
     ffi::{c_int, c_void},
     option::Option,
@@ -100,7 +98,7 @@ impl ServiceCall {
         }
     }
 
-    pub fn register_callback(
+    pub(crate) fn register_callback(
         &self,
         function: SystemFunction,
         callback: *mut c_void,
@@ -109,7 +107,7 @@ impl ServiceCall {
         self.service_call(ServiceCallType::OwlServiceRegisterCallback, &mut args)
     }
 
-    pub fn request_callback(&self, function: SystemFunction) -> Result<NonNull<()>, &str> {
+    pub(crate) fn request_callback(&self, function: SystemFunction) -> Result<NonNull<()>, &str> {
         let mut callback: *mut () = core::ptr::null_mut();
         let mut args = [
             function.code().as_ptr() as *mut _,
@@ -121,7 +119,7 @@ impl ServiceCall {
             .and_then(|_| NonNull::new(callback).ok_or("bad callback"))
     }
 
-    pub fn get_array<T>(&self, table: SystemTable) -> Result<&'static [T], &str> {
+    pub(crate) fn get_array<T>(&self, table: SystemTable) -> Result<&'static [T], &str> {
         let mut size: usize = 0;
         let mut ptr: *mut T = core::ptr::null_mut();
         let mut args = [
@@ -135,8 +133,6 @@ impl ServiceCall {
             .map(|ptr| unsafe { slice::from_raw_parts(ptr.as_ptr(), size) })
     }
 
-<<<<<<< HEAD
-=======
     /// Get a resource file
     ///
     /// The OwlServiceGetArray service call takes 4 (pointer) args:
@@ -148,11 +144,8 @@ impl ServiceCall {
     /// if resource is not found or offset is not aligned, OWL_SERVICE_INVALID_ARGS is returned.
     /// if buffer address is null, max_length will by updated giving the actual length of the resource data minus offset.
     ///   if the resource is memory mapped, the buffer address will also be updated to the start of the resource + offet.
-    ///     The resource is then ready to use as a byte slice.
-    ///   Otherwise, we'll need to allocate some memory and try again
     /// if a non-null buffer address is given, data will be copied to the pointer, min(size, resourceSize - offet) bytes.
-    ///
-    pub fn get_resource(&self, name: &CStr) -> Result<Resource, &str> {
+    pub(crate) fn get_resource(&self, name: &CStr) -> Result<(usize, Option<NonNull<u8>>), &str> {
         let mut size: usize = 0;
         let mut offset: usize = 0;
         let mut ptr: *mut u8 = core::ptr::null_mut();
@@ -165,31 +158,26 @@ impl ServiceCall {
 
         self.service_call(ServiceCallType::OwlServiceLoadResource, &mut args)?;
 
-        if !ptr.is_null() && size > 0 {
-            Ok(Resource::Mapped(unsafe {
-                slice::from_raw_parts(ptr, size)
-            }))
-        } else {
-            self.load_resource(name, size)
-        }
+        Ok((size, NonNull::new(ptr)))
     }
 
-    fn load_resource(&self, name: &CStr, mut size: usize) -> Result<Resource, &str> {
-        let mut data = vec![0; size].into_boxed_slice();
-        let mut offset: usize = 0;
+    pub(crate) fn load_resource(
+        &self,
+        name: &CStr,
+        mut offset: usize,
+        dest: &mut [u8],
+    ) -> Result<(), &str> {
+        let mut size: usize = dest.len();
         let mut args = [
             name.as_ptr() as *mut _,
-            &mut data.as_mut_ptr() as *mut *mut u8 as *mut _,
+            &mut dest.as_mut_ptr() as *mut *mut u8 as *mut _,
             &mut offset as *mut usize as *mut _,
             &mut size as *mut usize as *mut _,
         ];
-
         self.service_call(ServiceCallType::OwlServiceLoadResource, &mut args)
-            .map(|_| Resource::Owned(data))
     }
 
->>>>>>> e30b476 ([wip] resources)
-    pub fn device_parameters(&self) -> DeviceParameters {
+    pub(crate) fn device_parameters(&self) -> DeviceParameters {
         const IN_OFFSET: &[u8; 3usize] = b"IO\0";
         const IN_SCALAR: &[u8; 3usize] = b"IS\0";
         const OUT_OFFSET: &[u8; 3usize] = b"OO\0";

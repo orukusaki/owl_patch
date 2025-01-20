@@ -150,5 +150,4 @@ pub extern "C" fn button_changed(bid: u8, state: u16, samples: u16) {
             samples,
         );
     }
-    drop(guard);
 }

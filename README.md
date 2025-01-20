@@ -107,7 +107,7 @@ The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 
 - `vpo_fastmaths` (default): Use fastmaths functions in the [volts_per_octave](https://docs.rs/owl_patch/latest/owl_patch/volts_per_octave/index.html) module to convert between Volts and Frequencies quicker (but less accurately). Requires `fastmaths`.
 
 ## Project state
-Experimental. Will probabably always be that way.
+Experimental, but already pretty usable.
 
 ### Working features:
 - Output correctly linked binary including patch header
@@ -121,10 +121,10 @@ Experimental. Will probabably always be that way.
 - Debug messages
 - Get i/o callibration data for volts-per-octave conversions
 - Get system log / pow tables to perform fast maths functions
+- Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
 
 ### Todo List:
 
-- Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
 - FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 - Add support for display devices
 
