@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../owl_patch_test"
+		}
+	],
+	"settings": {
+		"rust-analyzer.linkedProjects": [
+			"Cargo.toml",
+			"macros/Cargo.toml",
+			"examples/Cargo.toml"
+		]
+	}
+}

@@ -1,3 +1,5 @@
+//! Minimal example patch
+//! Passes audio verbatum from the input to the output
 #![no_main]
 #![no_std]
 extern crate alloc;

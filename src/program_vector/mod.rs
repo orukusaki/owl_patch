@@ -25,6 +25,9 @@ pub use midi::Midi;
 mod meta;
 pub use meta::*;
 
+mod resources;
+pub use resources::Resources;
+
 mod service_call;
 use service_call::{ServiceCall, SystemFunction};
 
@@ -177,6 +180,11 @@ impl ProgramVector {
                 VoltsPerSample::new(parameters.output_scalar, parameters.output_offset),
             )
         })
+    }
+
+    /// Get resources service
+    pub fn resources(&self) -> Resources {
+        Resources::new(&self.service_call)
     }
 }
 

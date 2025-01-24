@@ -11,6 +11,8 @@ use alloc::vec;
 use alloc::{boxed::Box, vec::Vec};
 use num_traits::MulAddAssign;
 
+use crate::interpolation::{Cubic, CubicSmooth, Lerp};
+
 /// Sample / Buffer conversion trait
 pub trait ConvertFrom<T: ?Sized> {
     /// Read from `other`, converting into the correct format
@@ -352,6 +354,7 @@ impl<S: StoragePattern, C: MutableContainer> Buffer<S, C> {
     }
 }
 
+// TODO: maybe this is a bit naughty?
 #[doc(hidden)]
 impl<C: Container> Deref for Buffer<Mono, C> {
     type Target = [C::Item];
@@ -365,6 +368,64 @@ impl<C: Container> Deref for Buffer<Mono, C> {
 impl<C: MutableContainer> DerefMut for Buffer<Mono, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.samples_mut()
+    }
+}
+
+impl<C> Buffer<Mono, C>
+where
+    C: Container,
+    C::Item: Lerp + Copy,
+{
+    /// Get sample value by partial index using linear interpolation
+    pub fn index_lerp(&self, index: f32) -> C::Item {
+        let (index0, index1, alpha) =
+            crate::interpolation::partial_index(index, self.blocksize as f32);
+
+        let samples = self.samples.as_ref();
+
+        let a = samples[index0];
+        let b = samples[index1];
+        Lerp::lerp(a, b, alpha)
+    }
+}
+
+impl<C> Buffer<Mono, C>
+where
+    C: Container,
+    C::Item: Cubic + Copy,
+{
+    /// Get sample value by partial index using cubic interpolation
+    pub fn index_cubic(&self, index: f32) -> C::Item {
+        let (index0, index1, index2, index3, alpha) =
+            crate::interpolation::quad_index(index, self.blocksize as f32);
+
+        let samples = self.samples.as_ref();
+
+        let a = samples[index0];
+        let b = samples[index1];
+        let c = samples[index2];
+        let d = samples[index3];
+        Cubic::cubic(a, b, c, d, alpha)
+    }
+}
+
+impl<C> Buffer<Mono, C>
+where
+    C: Container,
+    C::Item: CubicSmooth + Copy,
+{
+    /// Get sample value by partial index using smooth cubic interpolation
+    pub fn index_cubic_smooth(&self, index: f32) -> C::Item {
+        let (index0, index1, index2, index3, alpha) =
+            crate::interpolation::quad_index(index, self.blocksize as f32);
+
+        let samples = self.samples.as_ref();
+
+        let a = samples[index0];
+        let b = samples[index1];
+        let c = samples[index2];
+        let d = samples[index3];
+        CubicSmooth::cubic_smooth(a, b, c, d, alpha)
     }
 }
 

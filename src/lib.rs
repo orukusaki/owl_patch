@@ -10,6 +10,7 @@ pub mod midi_message;
 
 #[cfg(feature = "fastmaths")]
 pub mod fastmaths;
+pub mod interpolation;
 pub mod program_vector;
 pub mod sample_buffer;
 pub mod volts_per_octave;
@@ -17,6 +18,8 @@ pub mod volts_per_octave;
 pub use ffi::openware_midi_control::{
     OpenWareMidiControl, OpenWareMidiSysexCommand, PatchButtonId, PatchParameterId,
 };
+
+pub mod resource;
 
 #[cfg(not(target_os = "none"))]
 #[doc(hidden)]

@@ -1,3 +1,11 @@
+//! Midi IO / Quantizer example using Volts Per Octave calculations
+//! Left channel will send a midi note-on message when Gate 1 is activated.
+//! The note value is detirmined by the voltage on the left input, velocity is Param A.
+//!
+//! When a Midi note is received, the Left output will be set to the voltage representing the note pitch, and GATE OUT will be activated.
+//! Param F (VC Out 1) is the note velocity.
+//!
+//! The right channel is a simple quantizer. Whenever Gate 2 is activated, the Right input is read, quantized to the nearest note, and send to the right output.
 #![no_main]
 #![no_std]
 extern crate alloc;
