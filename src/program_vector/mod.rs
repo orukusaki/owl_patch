@@ -24,6 +24,8 @@ pub use messages::{debug_message, error};
 mod midi;
 pub use midi::Midi;
 
+mod screen;
+
 mod meta;
 pub use meta::*;
 

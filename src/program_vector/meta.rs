@@ -1,12 +1,12 @@
-use core::slice;
-
 use crate::ffi::program_vector as ffi;
+use core::slice;
 pub use ffi::MemorySegment;
+use num::FromPrimitive;
 
 /// Checksum value used to verify that the program vector was initialised, as well as indicating
 /// features available in the host OS
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, num_derive :: FromPrimitive)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, num_derive::FromPrimitive)]
 pub enum ProgramVectorChecksum {
     /// Version 11
     V11 = ffi::PROGRAM_VECTOR_CHECKSUM_V11 as u8,
@@ -16,27 +16,80 @@ pub enum ProgramVectorChecksum {
     V13 = ffi::PROGRAM_VECTOR_CHECKSUM_V13 as u8,
 }
 
-/// Owl Pedal hardware identifier
-pub const OWL_PEDAL_HARDWARE: u8 = ffi::OWL_PEDAL_HARDWARE as u8;
+pub const OWL_PEDAL_LEGACY_HARDWARE: u8 = 0x11;
+pub const OWL_MODULAR_LEGACY_HARDWARE: u8 = 0x12;
+pub const OWL_RACK_HARDWARE: u8 = 0x13;
+pub const PRISM_HARDWARE: u8 = 0x14;
+pub const PLAYER_HARDWARE: u8 = 0x15;
+pub const TESSERACT_HARDWARE: u8 = 0x16;
+pub const ALCHEMIST_HARDWARE: u8 = 0x17;
+pub const WIZARD_HARDWARE: u8 = 0x18;
+pub const MAGUS_HARDWARE: u8 = 0x19;
+pub const EFFECTSBOX_HARDWARE: u8 = 0x1a;
+pub const WAVETABLE_HARDWARE: u8 = 0x1b;
+pub const NOCTUA_HARDWARE: u8 = 0x1c;
+pub const BIOSIGNALS_HARDWARE: u8 = 0x1d;
+pub const LICH_HARDWARE: u8 = 0x1e;
+pub const WITCH_HARDWARE: u8 = 0x1f;
+pub const GENIUS_HARDWARE: u8 = 0x20;
+pub const OWL_PEDAL_HARDWARE: u8 = 0x21;
+pub const OWL_MODULAR_HARDWARE: u8 = 0x22;
+pub const XIBECA_HARDWARE: u8 = 0x23;
+pub const OTHER_HARDWARE: u8 = 0xf0;
 
-/// Owl Modular hardware identifier
-pub const OWL_MODULAR_HARDWARE: u8 = ffi::OWL_MODULAR_HARDWARE as u8;
+#[repr(u8)]
+#[derive(Copy, Clone, Default, num_derive::FromPrimitive)]
+pub enum HardwareId {
+    OwlPedalLegacyHardware = OWL_PEDAL_LEGACY_HARDWARE,
+    OwlModularLegacyHardware = OWL_MODULAR_LEGACY_HARDWARE,
+    OwlRackHardware = OWL_RACK_HARDWARE,
+    PrismHardware = PRISM_HARDWARE,
+    PlayerHardware = PLAYER_HARDWARE,
+    TesseractHardware = TESSERACT_HARDWARE,
+    AlchemistHardware = ALCHEMIST_HARDWARE,
+    WizardHardware = WIZARD_HARDWARE,
+    MagusHardware = MAGUS_HARDWARE,
+    EffectsboxHardware = EFFECTSBOX_HARDWARE,
+    WavetableHardware = WAVETABLE_HARDWARE,
+    NoctuaHardware = NOCTUA_HARDWARE,
+    BiosignalsHardware = BIOSIGNALS_HARDWARE,
+    LichHardware = LICH_HARDWARE,
+    WitchHardware = WITCH_HARDWARE,
+    GeniusHardware = GENIUS_HARDWARE,
+    OwlPedalHardware = OWL_PEDAL_HARDWARE,
+    OwlModularHardware = OWL_MODULAR_HARDWARE,
+    XibecaHardware = XIBECA_HARDWARE,
+    #[default]
+    OtherHardware = OTHER_HARDWARE,
+}
 
-/// Owl Rack hardware identifier
-pub const OWL_RACK_HARDWARE: u8 = ffi::OWL_RACK_HARDWARE as u8;
+pub enum ScreenType {
+    None,
+    Monochrome,
+    Colour,
+}
 
-/// Prism hardware identifier
-pub const PRISM_HARDWARE: u8 = ffi::PRISM_HARDWARE as u8;
+impl HardwareId {
+    pub fn has_screen(&self) -> ScreenType {
+        match self {
+            HardwareId::EffectsboxHardware
+            | HardwareId::GeniusHardware
+            | HardwareId::MagusHardware
+            | HardwareId::PlayerHardware
+            | HardwareId::XibecaHardware => ScreenType::Monochrome,
 
-/// Player hardware identifier
-pub const PLAYER_HARDWARE: u8 = ffi::PLAYER_HARDWARE as u8;
+            HardwareId::PrismHardware => ScreenType::Colour,
+            _ => ScreenType::None,
+        }
+    }
+}
 
 /// Program Metadata
 pub struct Meta {
     cycles_per_block: &'static u32,
     heap_bytes_used: &'static mut u32,
     checksum: ProgramVectorChecksum,
-    hardware_version: u8,
+    hardware_version: HardwareId,
     heap_locations: *mut MemorySegment,
 }
 
@@ -52,7 +105,7 @@ impl Meta {
             cycles_per_block,
             heap_bytes_used,
             checksum,
-            hardware_version,
+            hardware_version: HardwareId::from_u8(hardware_version).unwrap_or_default(),
             heap_locations,
         }
     }
@@ -73,7 +126,7 @@ impl Meta {
     }
 
     /// Get Hardware version. *might* match one of the *_HARDWARE constants.
-    pub fn hardware_version(&self) -> u8 {
+    pub fn hardware_version(&self) -> HardwareId {
         self.hardware_version
     }
 
