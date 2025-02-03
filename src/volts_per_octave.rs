@@ -1,10 +1,11 @@
 //! Sample / Volts / Frequency / Note conversions using calibrated device data
 use core::ops::{Div, Mul};
 
-#[cfg(feature = "vpo_fastmaths")]
+#[cfg(all(feature = "vpo_fastmaths", target_arch = "arm"))]
 use super::fastmaths::FastFloat as _;
 
-#[cfg(all(not(feature = "vpo_fastmaths"), target_os = "none"))]
+use cfg_if::cfg_if;
+#[cfg(all(not(feature = "vpo_fastmaths"), target_arch = "arm"))]
 use num_traits::Float as _;
 
 /// Sample / Volts / Frequency / Note conversions using calibrated device data
@@ -130,13 +131,14 @@ impl From<Volts> for f32 {
 }
 
 impl From<Frequency> for Volts {
-    #[cfg(feature = "vpo_fastmaths")]
     fn from(freq: Frequency) -> Self {
-        (freq.0 / 440.0).fast_log2().into()
-    }
-    #[cfg(not(feature = "vpo_fastmaths"))]
-    fn from(freq: Frequency) -> Self {
-        (freq.0 / 440.0).log2().into()
+        cfg_if! {
+            if #[cfg(all(feature = "vpo_fastmaths", target_arch = "arm"))] {
+                (freq.0 / 440.0).fast_log2().into()
+            } else {
+                (freq.0 / 440.0).log2().into()
+            }
+        }
     }
 }
 
@@ -204,14 +206,14 @@ impl From<Frequency> for f32 {
 }
 
 impl From<Volts> for Frequency {
-    #[cfg(feature = "vpo_fastmaths")]
     fn from(volts: Volts) -> Self {
-        (440.0 * volts.0.fast_exp2()).into()
-    }
-
-    #[cfg(not(feature = "vpo_fastmaths"))]
-    fn from(volts: Volts) -> Self {
-        (440.0 * volts.0.exp2()).into()
+        cfg_if! {
+            if #[cfg(all(feature = "vpo_fastmaths", target_arch = "arm"))] {
+                (440.0 * volts.0.fast_exp2()).into()
+            } else {
+                (440.0 * volts.0.exp2()).into()
+            }
+        }
     }
 }
 

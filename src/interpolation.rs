@@ -1,7 +1,7 @@
 //! Interpolation traits
 
 use num_traits::Euclid;
-#[cfg(target_os = "none")]
+#[cfg(target_arch = "arm")]
 use num_traits::Float as _;
 
 /// Linear Interpolation

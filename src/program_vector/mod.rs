@@ -52,7 +52,7 @@ pub struct ProgramVector {
 }
 
 #[doc(hidden)]
-#[cfg_attr(target_os = "none", link_section = ".pv")]
+#[cfg_attr(target_arch = "arm", link_section = ".pv")]
 pub static mut PROGRAM_VECTOR: core::mem::MaybeUninit<FfiProgramVector> =
     core::mem::MaybeUninit::uninit();
 
@@ -80,7 +80,7 @@ impl ProgramVector {
             pv.heapLocations,
         );
 
-        #[cfg(all(feature = "talc", target_os = "none"))]
+        #[cfg(all(feature = "talc", target_arch = "arm"))]
         {
             let mut talc = talc_heap::ALLOCATOR.lock();
             meta.memory_segments().iter().for_each(|seg| unsafe {
@@ -188,7 +188,7 @@ impl ProgramVector {
     }
 }
 
-#[cfg(all(feature = "talc", target_os = "none"))]
+#[cfg(all(feature = "talc", target_arch = "arm"))]
 mod talc_heap {
     use talc::*;
 
@@ -209,10 +209,10 @@ mod talc_heap {
     }
 }
 
-#[cfg(all(feature = "talc", target_os = "none"))]
+#[cfg(all(feature = "talc", target_arch = "arm"))]
 pub use talc_heap::heap_bytes_used;
 
-#[cfg(all(feature = "talc", not(target_os = "none")))]
+#[cfg(all(feature = "talc", not(target_arch = "arm")))]
 #[doc(hidden)]
 pub fn heap_bytes_used() -> usize {
     0

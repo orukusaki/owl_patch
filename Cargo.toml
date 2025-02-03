@@ -9,6 +9,9 @@ keywords = ["dsp", "embedded", "synthesizer", "audio", "owl"]
 categories = ["multimedia::audio", "no-std", "embedded"]
 repository = "https://github.com/orukusaki/owl_patch"
 
+[package.metadata.docs.rs]
+default-target = "thumbv7em-none-eabihf"
+
 [dependencies]
 num = {version = "0.4", default-features = false}
 num-derive = "0.4.2"
@@ -16,6 +19,10 @@ num-traits = { version = "0.2.19", default-features = false,  features = ["libm"
 talc = {version = "4.4.1", features = ["counters"], optional = true}
 spin = "0.9.8"
 owl_patch_macros = "0.1.0"
+cfg-if = "1.0.0"
+
+[target.'cfg(target_arch = "arm")'.dependencies]
+cmsis-dsp-sys = "0.3.1"
 
 [build-dependencies]
 bindgen = {version = "0.70.1"}

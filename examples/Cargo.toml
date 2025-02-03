@@ -7,9 +7,7 @@ authors = ["orukusaki"]
 [dependencies]
 owl_patch = {path = '../'}
 fundsp = { version = "0.18.2", default-features = false }
-cmsis_dsp = {version = "0.1.0", features = ["libm"]}
 num-traits = { version = "0.2.19", default-features = false,  features = ["libm"]}
-microfft = "0.6.0"
 
 [profile.release]
 strip = "debuginfo"

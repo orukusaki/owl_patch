@@ -44,7 +44,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
     let main_fn = &f.sig.ident;
 
     quote!(
-        #[cfg(target_os = "none")]
+        #[cfg(target_arch = "arm")]
         mod __header {
 
             use owl_patch::ProgramHeader;
@@ -69,7 +69,7 @@ pub fn patch(attr: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
 
-        #[cfg(not(target_os = "none"))]
+        #[cfg(not(target_arch = "arm"))]
         mod __header {
             #[no_mangle]
             unsafe extern "Rust" fn main() {

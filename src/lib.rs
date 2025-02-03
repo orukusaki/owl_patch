@@ -1,4 +1,4 @@
-#![cfg_attr(target_os = "none", no_std)]
+#![cfg_attr(target_arch = "arm", no_std)]
 #![feature(slice_from_ptr_range)]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
@@ -21,7 +21,7 @@ pub use ffi::openware_midi_control::{
 
 pub mod resource;
 
-#[cfg(not(target_os = "none"))]
+#[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
 pub mod test_harness;
 
@@ -58,7 +58,7 @@ use core::{
 /// [ProgramVector]: crate::program_vector::ProgramVector
 pub use owl_patch_macros::patch;
 
-#[cfg(target_os = "none")]
+#[cfg(target_arch = "arm")]
 #[panic_handler]
 unsafe fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     match info.message().as_str() {
@@ -127,7 +127,7 @@ impl ProgramHeader {
 }
 
 /// Startup function
-#[cfg(target_os = "none")]
+#[cfg(target_arch = "arm")]
 #[link_section = ".text.Reset_Handler"]
 unsafe extern "C" fn reset_handler() {
     // These values are provided by the linker script
@@ -163,5 +163,5 @@ unsafe extern "C" fn reset_handler() {
     __main()
 }
 
-#[cfg(not(target_os = "none"))]
+#[cfg(not(target_arch = "arm"))]
 unsafe extern "C" fn reset_handler() {}

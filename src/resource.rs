@@ -12,7 +12,7 @@ pub struct Resource {
 }
 
 impl Resource {
-    #[cfg(not(target_os = "none"))]
+    #[cfg(not(target_arch = "arm"))]
     #[doc(hidden)]
     pub fn new_for_test(name: impl Into<CString>, size: usize, data: Option<NonNull<u8>>) -> Self {
         Self {
