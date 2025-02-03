@@ -71,7 +71,7 @@ impl Cubic for f32 {
         let b = 2.0 * y0 - 2.0 * y1 + y2 - y3;
         let c = -y0 + y2;
         let d = y1;
-        return a * alpha3 + b * alpha2 + c * alpha + d;
+        a * alpha3 + b * alpha2 + c * alpha + d
     }
 }
 
@@ -91,7 +91,7 @@ impl CubicSmooth for f32 {
         let c = -0.5 * y0 + 0.5 * y2;
         let d = y1;
 
-        return a * alpha3 + b * alpha2 + c * alpha + d;
+        a * alpha3 + b * alpha2 + c * alpha + d
     }
 }
 
