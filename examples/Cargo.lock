@@ -115,14 +115,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
-name = "fundsp"
-version = "0.18.2"
+name = "equivalent"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "025546ff4046657b44a673472bb22270275816cc33957505dfc801f183c15ca4"
+checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
+
+[[package]]
+name = "foldhash"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0d2fde1f7b3d48b8395d5f2de76c18a528bd6a9cdde438df747bfcba3e05d6f"
+
+[[package]]
+name = "fundsp"
+version = "0.20.0"
+source = "git+https://github.com/SamiPerttu/fundsp?rev=c4e1e0bbea6a78d30b4217925bd24febbe5ffc4e#c4e1e0bbea6a78d30b4217925bd24febbe5ffc4e"
 dependencies = [
  "dyn-clone",
  "funutd",
- "hashbrown",
+ "hashbrown 0.15.2",
  "libm",
  "microfft",
  "num-complex",
@@ -141,7 +152,7 @@ checksum = "30f658de1fbeca3b70faf090e33d1ecf32b0efd1805bede4a8fd6ef562b7ab83"
 dependencies = [
  "dyn-clone",
  "glam",
- "hashbrown",
+ "hashbrown 0.14.5",
  "libm",
 ]
 
@@ -177,6 +188,17 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash",
  "allocator-api2",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash",
 ]
 
 [[package]]
