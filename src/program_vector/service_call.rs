@@ -11,6 +11,9 @@ use super::OWL_MODULAR_HARDWARE;
 
 const OWL_SERVICE_OK: i32 = ffi::OWL_SERVICE_OK as i32;
 
+#[cfg(target_arch = "arm")]
+use cmsis_dsp_sys_pregenerated::{arm_cfft_instance_f32, arm_rfft_fast_instance_f32};
+
 #[allow(dead_code)]
 #[repr(i32)]
 pub enum ServiceCallType {
@@ -218,7 +221,7 @@ impl ServiceCall {
     #[cfg(target_arch = "arm")]
     pub(crate) fn init_rfft(
         &self,
-        instance: *mut cmsis_dsp_sys::arm_rfft_fast_instance_f32,
+        instance: *mut arm_rfft_fast_instance_f32,
         mut size: usize,
     ) -> Result<(), &str> {
         let mut args = [instance as *mut _, &mut size as *mut usize as *mut _];
@@ -228,7 +231,7 @@ impl ServiceCall {
     #[cfg(target_arch = "arm")]
     pub(crate) fn init_cfft(
         &self,
-        instance: *mut cmsis_dsp_sys::arm_cfft_instance_f32,
+        instance: *mut arm_cfft_instance_f32,
         mut size: usize,
     ) -> Result<(), &str> {
         let mut args = [instance as *mut _, &mut size as *mut usize as *mut _];

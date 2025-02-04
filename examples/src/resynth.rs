@@ -1,15 +1,15 @@
 //! Frequency domain resynthesis.
 
-// Robbed from FunDsp, modified to use the CMSIS fft transform
+// Shamelessly yoinked from FunDsp, modified to use the CMSIS fft transform
+extern crate alloc;
 
+use alloc::vec;
+use alloc::vec::Vec;
 use fundsp::audionode::*;
 use fundsp::math::*;
 use fundsp::signal::*;
 use fundsp::*;
 use num_complex::Complex32;
-extern crate alloc;
-use alloc::vec;
-use alloc::vec::Vec;
 use owl_patch::fft::RealFft;
 
 /// Number of overlapping FFT windows.
@@ -276,7 +276,7 @@ where
     }
 }
 
-impl<'a, I, O, F> AudioNode for Resynth<'a, I, O, F>
+impl<I, O, F> AudioNode for Resynth<'_, I, O, F>
 where
     I: Size<f32>,
     O: Size<f32>,

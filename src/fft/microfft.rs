@@ -5,7 +5,7 @@ use num::Complex;
 pub struct MicroFftRealFft {}
 
 impl MicroFftRealFft {
-    pub(crate) fn new(size: FftSize) -> Self {
+    pub(crate) fn new(_size: FftSize) -> Self {
         Self {}
     }
 }
@@ -18,11 +18,11 @@ impl RealFft for MicroFftRealFft {
         0
     }
 
-    fn fft(&self, src: &mut [f32], dest: &mut [Complex<f32>]) {
+    fn fft(&self, _src: &mut [f32], _dest: &mut [Complex<f32>]) {
         unimplemented!();
     }
 
-    fn ifft(&self, src: &mut [Complex<f32>], dest: &mut [f32]) {
+    fn ifft(&self, _src: &mut [Complex<f32>], _dest: &mut [f32]) {
         unimplemented!();
     }
 }
@@ -34,7 +34,7 @@ unsafe impl Sync for MicroFftRealFft {}
 pub struct MicroFftComplexFft {}
 
 impl MicroFftComplexFft {
-    pub(crate) fn new(size: FftSize) -> Self {
+    pub(crate) fn new(_size: FftSize) -> Self {
         Self {}
     }
 }
@@ -43,11 +43,11 @@ impl ComplexFft for MicroFftComplexFft {
         0
     }
 
-    fn fft(&self, buff: &mut [Complex<f32>]) {
+    fn fft(&self, _buff: &mut [Complex<f32>]) {
         unimplemented!();
     }
 
-    fn ifft(&self, buff: &mut [Complex<f32>]) {
+    fn ifft(&self, _buff: &mut [Complex<f32>]) {
         unimplemented!();
     }
 }

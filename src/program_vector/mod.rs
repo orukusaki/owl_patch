@@ -3,6 +3,9 @@ extern crate alloc;
 use cfg_if::cfg_if;
 use num::FromPrimitive;
 
+#[cfg(target_arch = "arm")]
+use cmsis_dsp_sys_pregenerated::{arm_cfft_instance_f32, arm_rfft_fast_instance_f32};
+
 use core::slice;
 
 use crate::{
@@ -196,7 +199,7 @@ impl ProgramVector {
     pub fn fft_real(&self, size: FftSize) -> Result<impl RealFft + Clone + Send, &str> {
         cfg_if! {
             if #[cfg(target_arch = "arm")] {
-                let mut instance = core::mem::MaybeUninit::<cmsis_dsp_sys::arm_rfft_fast_instance_f32>::zeroed();
+                let mut instance = core::mem::MaybeUninit::<arm_rfft_fast_instance_f32>::zeroed();
 
                 self.service_call.init_rfft(instance.as_mut_ptr(), size as usize)?;
 
@@ -216,7 +219,7 @@ impl ProgramVector {
     pub fn fft_complex(&self, size: FftSize) -> Result<impl ComplexFft + Clone + Send, &str> {
         cfg_if! {
             if #[cfg(target_arch = "arm")] {
-                let mut instance = core::mem::MaybeUninit::<cmsis_dsp_sys::arm_cfft_instance_f32>::zeroed();
+                let mut instance = core::mem::MaybeUninit::<arm_cfft_instance_f32>::zeroed();
 
                 self.service_call
                     .init_cfft(instance.as_mut_ptr(), size as usize)?;
