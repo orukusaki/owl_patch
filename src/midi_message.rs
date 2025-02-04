@@ -155,7 +155,7 @@ impl MidiMessage {
 
     /// Is this a sysex message?
     pub fn is_sys_ex(&self) -> bool {
-        UsbMidi::from_u8(self.port & 0x0f).map_or(false, |command| command.is_sys_ex())
+        UsbMidi::from_u8(self.port & 0x0f).is_some_and(|command| command.is_sys_ex())
     }
 
     /// Is this a control change message?
