@@ -54,7 +54,9 @@ impl Midi {
     }
 }
 
-static RECEIVE_CALLBACK: Mutex<Option<Box<dyn FnMut(MidiMessage) + Send>>> = Mutex::new(None);
+type StaticCallBack = Mutex<Option<Box<dyn FnMut(MidiMessage) + Send>>>;
+
+static RECEIVE_CALLBACK: StaticCallBack = Mutex::new(None);
 
 pub extern "C" fn midi_receive(port: u8, status: u8, d1: u8, d2: u8) {
     if let Some(callback) = RECEIVE_CALLBACK.lock().as_mut() {
