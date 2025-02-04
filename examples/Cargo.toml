@@ -7,7 +7,7 @@ authors = ["orukusaki"]
 [dependencies]
 owl_patch = {path = '../'}
 fundsp = { default-features = false, git = "https://github.com/SamiPerttu/fundsp", rev="c4e1e0bbea6a78d30b4217925bd24febbe5ffc4e"}
-num-traits = { version = "0.2.19", default-features = false,  features = ["libm"]}
+num-traits = { version = "0.2.19", default-features = false, features = ["libm"]}
 num-complex = { version = "0.4.6", default-features = false, features = ["libm"]}
 
 [profile.release]
