@@ -54,7 +54,7 @@ fn run(mut pv: ProgramVector) -> ! {
     let mut sample_buffer = Buffer::new_mono(resource.size() / 2);
 
     for (insamp, buffsamp) in data
-        .into_iter()
+        .iter()
         .array_chunks::<2>()
         .map(|bytes| i16::from_le_bytes(bytes.map(|b| *b)))
         .zip(sample_buffer.samples_mut())
