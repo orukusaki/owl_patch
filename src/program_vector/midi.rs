@@ -9,8 +9,6 @@ use crate::midi_message::MidiMessage;
 
 use super::{ServiceCall, SystemFunction};
 
-pub trait Callback: FnMut(MidiMessage) + Send {}
-
 /// Send & receive midi messages
 ///
 /// Use [ProgramVector::midi()] to obtain the interface. It can then be copied to any parts of your patch that need it.
@@ -43,7 +41,7 @@ impl Midi {
     }
 
     /// Register a callback which is fired whenever a midi message is received
-    pub fn on_receive(&self, callback: impl Callback + 'static) {
+    pub fn on_receive(&self, callback: impl FnMut(MidiMessage) + Send + 'static) {
         RECEIVE_CALLBACK.lock().replace(Box::new(callback));
     }
 
@@ -56,7 +54,7 @@ impl Midi {
     }
 }
 
-static RECEIVE_CALLBACK: Mutex<Option<Box<dyn Callback>>> = Mutex::new(None);
+static RECEIVE_CALLBACK: Mutex<Option<Box<dyn FnMut(MidiMessage) + Send>>> = Mutex::new(None);
 
 pub extern "C" fn midi_receive(port: u8, status: u8, d1: u8, d2: u8) {
     if let Some(callback) = RECEIVE_CALLBACK.lock().as_mut() {
