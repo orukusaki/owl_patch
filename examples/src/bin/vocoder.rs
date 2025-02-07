@@ -83,13 +83,13 @@ fn run(mut pv: ProgramVector) -> ! {
 }
 
 #[inline(never)]
-fn build_network<'a>(
+fn build_network(
     bands: Shared,
     formant_shift: Shared,
     attack: Shared,
     release: Shared,
-    fft: &'a dyn RealFft,
-) -> Box<An<impl AudioNode + use<'a>>> {
+    fft: &dyn RealFft,
+) -> Box<An<impl AudioNode + use<'_>>> {
     Box::new({
         let mut envelopes = EnvelopeBank::<BINS>::new(0.0, 0.0);
         let mut amplitudes = [0.0; BINS];

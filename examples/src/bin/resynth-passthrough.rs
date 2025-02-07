@@ -48,10 +48,10 @@ fn run(mut pv: ProgramVector) -> ! {
 }
 
 #[inline(never)]
-fn build_network<'a>(
-    fft: &'a dyn RealFft,
+fn build_network(
+    fft: &dyn RealFft,
     sample_rate: f32,
-) -> Box<An<impl AudioNode<Inputs = U1, Outputs = U2> + use<'a>>> {
+) -> Box<An<impl AudioNode<Inputs = U1, Outputs = U2> + use<'_>>> {
     let resynth = |fft| {
         An(Resynth::<U1, U1, _>::new(fft, move |fft| {
             for i in 0..fft.bins() {
