@@ -10,6 +10,7 @@ pub mod midi_message;
 
 #[cfg(feature = "fastmaths")]
 pub mod fastmaths;
+pub mod fft;
 pub mod interpolation;
 pub mod program_vector;
 pub mod sample_buffer;

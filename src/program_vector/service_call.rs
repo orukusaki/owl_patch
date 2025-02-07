@@ -215,6 +215,26 @@ impl ServiceCall {
             )
     }
 
+    #[cfg(target_arch = "arm")]
+    pub(crate) fn init_rfft(
+        &self,
+        instance: *mut cmsis_dsp_sys::arm_rfft_fast_instance_f32,
+        mut size: usize,
+    ) -> Result<(), &str> {
+        let mut args = [instance as *mut _, &mut size as *mut usize as *mut _];
+        self.service_call(ServiceCallType::OwlServiceArmRfftFastInitF32, &mut args)
+    }
+
+    #[cfg(target_arch = "arm")]
+    pub(crate) fn init_cfft(
+        &self,
+        instance: *mut cmsis_dsp_sys::arm_cfft_instance_f32,
+        mut size: usize,
+    ) -> Result<(), &str> {
+        let mut args = [instance as *mut _, &mut size as *mut usize as *mut _];
+        self.service_call(ServiceCallType::OwlServiceArmCfftInitF32, &mut args)
+    }
+
     fn service_call(
         &self,
         call_type: ServiceCallType,

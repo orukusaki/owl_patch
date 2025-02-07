@@ -1,10 +1,15 @@
 //! Communication with the Host OS
 extern crate alloc;
+use cfg_if::cfg_if;
 use num::FromPrimitive;
 
 use core::slice;
 
-use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
+use crate::{
+    ffi::program_vector as ffi,
+    fft::{ComplexFft, FftSize, RealFft},
+    volts_per_octave::VoltsPerSample,
+};
 
 use ffi::ProgramVector as FfiProgramVector;
 
@@ -185,6 +190,47 @@ impl ProgramVector {
     /// Get resources service
     pub fn resources(&self) -> Resources {
         Resources::new(&self.service_call)
+    }
+
+    /// Create a new Real FFT processor instance
+    pub fn fft_real(&self, size: FftSize) -> Result<impl RealFft + Clone + Send, &str> {
+        cfg_if! {
+            if #[cfg(target_arch = "arm")] {
+                let mut instance = core::mem::MaybeUninit::<cmsis_dsp_sys::arm_rfft_fast_instance_f32>::zeroed();
+
+                self.service_call.init_rfft(instance.as_mut_ptr(), size as usize)?;
+
+                // Check it really got initialised.  We created it zeroed, so if something went wrong it would still be zeroed now
+                if unsafe { instance.assume_init_ref().fftLenRFFT } as usize != size as usize {
+                    Err("rfft instance was not initialised")
+                } else {
+                    Ok(unsafe { crate::fft::cmsis::CmsisRealFft::new(instance.assume_init()) })
+                }
+            } else {
+                Ok(crate::fft::microfft::MicroFftRealFft::new(size))
+            }
+        }
+    }
+
+    /// Create a new Complex FFT processor instance
+    pub fn fft_complex(&self, size: FftSize) -> Result<impl ComplexFft + Clone + Send, &str> {
+        cfg_if! {
+            if #[cfg(target_arch = "arm")] {
+                let mut instance = core::mem::MaybeUninit::<cmsis_dsp_sys::arm_cfft_instance_f32>::zeroed();
+
+                self.service_call
+                    .init_cfft(instance.as_mut_ptr(), size as usize)?;
+
+                // Check it really got initialised.  We created it zeroed, so if something went wrong it would still be zeroed now
+                if unsafe { instance.assume_init_ref().fftLen } as usize != size as usize {
+                    Err("rfft instance was not initialised")
+                } else {
+                    Ok(unsafe { crate::fft::cmsis::CmsisComplexFft::new(instance.assume_init()) })
+                }
+            } else {
+                Ok(crate::fft::microfft::MicroFftComplexFft::new(size))
+            }
+        }
     }
 }
 
