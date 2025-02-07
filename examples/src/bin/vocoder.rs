@@ -10,6 +10,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 use owl_patch::{
     fastmaths::FastFloat,
+    fft::{FftSize, RealFft},
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
     sample_buffer::{Buffer, ConvertFrom, ConvertTo},
@@ -17,8 +18,16 @@ use owl_patch::{
 };
 
 use fundsp::hacker32::*;
+use owl_patch_examples::resynth::Resynth;
 
-#[patch("Resynth Vocoder")]
+// 256 seems to work well on Owl3, Owl2 needs a lower value.
+// The low blocksize (32) is the killer here, it doesn't leave enough time to do a larger FFT transform
+// With the blocksize set to 256, Owl3 can run happily with a 4096 FFT size
+const FFT_WIDTH: FftSize = FftSize::Size256;
+const BINS: usize = (FFT_WIDTH as usize >> 1) + 1;
+const MAX_BANDS_POWER: f32 = ((FFT_WIDTH as usize >> 1) - 1).count_ones() as f32;
+
+#[patch("Vocoder")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
 
@@ -30,79 +39,22 @@ fn run(mut pv: ProgramVector) -> ! {
     parameters.register(PatchParameterId::PARAMETER_C, "Attack");
     parameters.register(PatchParameterId::PARAMETER_D, "Release");
 
-    const FFT_WIDTH: usize = 256;
-    const BINS: usize = (FFT_WIDTH >> 1) + 1;
-    const MAX_BANDS_POWER: f32 = ((FFT_WIDTH >> 1) - 1).count_ones() as f32;
-
     let bands = Shared::new(0.0);
     let formant_shift = Shared::new(0.0);
     let attack = Shared::new(0.0);
     let release = Shared::new(0.0);
 
-    let unit = {
-        let bands = bands.clone();
-        let formant_shift = formant_shift.clone();
-        let attack = attack.clone();
-        let release = release.clone();
+    let fft = Box::new(pv.fft_real(FFT_WIDTH).unwrap());
 
-        let mut filters = FilterBank::<BINS>::new(0.0, 0.0);
-        let mut amplitudes = [0.0; BINS];
-
-        (dcblock_hz(5.0) | dcblock_hz(5.0))
-            >> resynth::<U2, U1, _>(FFT_WIDTH, move |fft| {
-                let n_bands = bands.value() as usize;
-                let squish_factor = BINS / n_bands;
-                let formant_shift_val = formant_shift.value();
-                let attack_val = attack.value();
-                let release_val = release.value();
-
-                filters.set_attack(attack_val);
-                filters.set_release(release_val);
-
-                // Get aplitudes for all frequency bands using formant_shift to scale the index, lerping the result
-                amplitudes
-                    .iter_mut()
-                    .enumerate()
-                    .for_each(|(i, amplitude)| {
-                        let fractional_index =
-                            (i as f32 * formant_shift_val).clamp(0.0, (fft.bins() - 1) as f32);
-                        let index_f = fractional_index.floor();
-                        let index_c = fractional_index.ceil();
-                        let alpha = fractional_index - index_f;
-
-                        let c0 = fft.at(1, index_f as usize);
-                        let c1 = fft.at(1, index_c as usize);
-                        *amplitude = (c0 + (c1 - c0) * alpha).norm();
-                    });
-
-                // noise gate
-                amplitudes
-                    .iter_mut()
-                    .for_each(|a| *a = (*a * 1.01 - 0.01).clamp(0.0, 1.0));
-
-                // condense the amplitudes into the number of bands desired
-                for i in 0..n_bands {
-                    let a = amplitudes[i * squish_factor..(i + 1) * squish_factor]
-                        .iter()
-                        .sum::<f32>()
-                        / squish_factor as f32;
-                    amplitudes[i] = a;
-                }
-
-                // Apply the amplitudes to the carrier signal
-                for i in 0..fft.bins() {
-                    let carrier = fft.at(0, i);
-                    let out = carrier.scale(filters.process(i, amplitudes[i / squish_factor]));
-
-                    fft.set(0, i, out);
-                }
-            })
-    };
-
-    let mut unit = Box::new(unit);
+    let mut unit = build_network(
+        bands.clone(),
+        formant_shift.clone(),
+        attack.clone(),
+        release.clone(),
+        fft.as_ref(),
+    );
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
-
     pv.meta().set_heap_bytes_used(heap_bytes_used());
     pv.audio().run(|input, output| {
         let bands_power = ((parameters.get(PatchParameterId::PARAMETER_A) + 0.1) * MAX_BANDS_POWER)
@@ -130,6 +82,69 @@ fn run(mut pv: ProgramVector) -> ! {
     });
 }
 
+#[inline(never)]
+fn build_network<'a>(
+    bands: Shared,
+    formant_shift: Shared,
+    attack: Shared,
+    release: Shared,
+    fft: &'a dyn RealFft,
+) -> Box<An<impl AudioNode + use<'a>>> {
+    Box::new({
+        let mut envelopes = EnvelopeBank::<BINS>::new(0.0, 0.0);
+        let mut amplitudes = [0.0; BINS];
+
+        An(Resynth::<U2, U1, _>::new(fft, move |fft| {
+            let n_bands = bands.value() as usize;
+            let squish_factor = BINS / n_bands;
+            let formant_shift_val = formant_shift.value();
+            let attack_val = attack.value();
+            let release_val = release.value();
+
+            envelopes.set_attack(attack_val);
+            envelopes.set_release(release_val);
+
+            // Get aplitudes for all frequency bands using formant_shift to scale the index, lerping the result
+            amplitudes
+                .iter_mut()
+                .enumerate()
+                .for_each(|(i, amplitude)| {
+                    let fractional_index =
+                        (i as f32 * formant_shift_val).clamp(0.0, (fft.bins() - 1) as f32);
+                    let index_f = fractional_index.floor();
+                    let index_c = fractional_index.ceil();
+                    let alpha = fractional_index - index_f;
+
+                    let c0 = fft.at(1, index_f as usize);
+                    let c1 = fft.at(1, index_c as usize);
+                    *amplitude = (c0 + (c1 - c0) * alpha).norm();
+                });
+
+            // noise gate
+            amplitudes
+                .iter_mut()
+                .for_each(|a| *a = (*a * 1.01 - 0.01).clamp(0.0, 1.0));
+
+            // condense the amplitudes into the number of bands desired
+            for i in 0..n_bands {
+                let a = amplitudes[i * squish_factor..(i + 1) * squish_factor]
+                    .iter()
+                    .sum::<f32>()
+                    / squish_factor as f32;
+                amplitudes[i] = a;
+            }
+
+            // Apply the amplitudes to the carrier signal
+            for i in 0..fft.bins() {
+                let carrier = fft.at(0, i);
+                let out = carrier.scale(envelopes.process(i, amplitudes[i / squish_factor]));
+
+                fft.set(0, i, out);
+            }
+        }))
+    })
+}
+
 #[derive(Clone, Copy, Default)]
 struct AREnv {
     yn1: f32,
@@ -147,13 +162,13 @@ impl AREnv {
 }
 
 #[derive(Clone, Copy)]
-struct FilterBank<const N: usize> {
+struct EnvelopeBank<const N: usize> {
     slots: [AREnv; N],
     attack: f32,
     release: f32,
 }
 
-impl<const N: usize> FilterBank<N> {
+impl<const N: usize> EnvelopeBank<N> {
     pub fn new(attack: f32, release: f32) -> Self {
         Self {
             attack,

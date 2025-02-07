@@ -39,40 +39,6 @@ pub struct FftWindow {
 }
 
 impl FftWindow {
-    /// Number of input channels.
-    #[inline]
-    fn inputs(&self) -> usize {
-        self.input.len()
-    }
-
-    /// Extend positive frequency values to negative frequencies to keep the inverse FFT result
-    /// real only.
-    fn extend_values(&mut self) {
-        for channel in 0..self.outputs() {
-            for i in self.length() / 2 + 1..self.length() {
-                self.output_fft[channel][i] = self.output_fft[channel][self.length() - i].conj();
-            }
-        }
-    }
-
-    /// Number of output channels.
-    #[inline]
-    fn outputs(&self) -> usize {
-        self.output.len()
-    }
-
-    /// Get forward vectors for forward FFT.
-    #[inline]
-    fn forward_vectors(&mut self, channel: usize) -> (&mut Vec<f32>, &mut Vec<Complex32>) {
-        (&mut self.input[channel], &mut self.input_fft[channel])
-    }
-
-    /// Get inverse vectors for inverse FFT.
-    #[inline]
-    fn inverse_vectors(&mut self, channel: usize) -> (&mut Vec<Complex32>, &mut Vec<f32>) {
-        (&mut self.output_fft[channel], &mut self.output[channel])
-    }
-
     /// FFT window length. This is a power of two and at least four.
     #[inline]
     fn length(&self) -> usize {
@@ -107,23 +73,17 @@ impl FftWindow {
 
     /// Create new window.
     fn new(length: usize, index: usize, inputs: usize, outputs: usize) -> Self {
-        let mut window = Self {
+        let complex_len = (length >> 1) + 1;
+        Self {
             length,
             input: vec![vec!(0.0; length); inputs],
-            input_fft: Vec::new(),
-            output_fft: Vec::new(),
+            input_fft: vec![vec![Complex32::default(); complex_len]; inputs],
+            output_fft: vec![vec![Complex32::default(); complex_len]; outputs],
             output: vec![vec!(0.0; length); outputs],
             sample_rate: DEFAULT_SR as f32,
             index,
             samples: 0,
-        };
-        window
-            .input_fft
-            .resize(inputs, vec![Complex32::default(); window.bins()]);
-        window
-            .output_fft
-            .resize(outputs, vec![Complex32::default(); length]);
-        window
+        }
     }
 
     /// Set the sample rate.
@@ -134,8 +94,8 @@ impl FftWindow {
     /// Write input for current index.
     #[inline]
     fn write<N: Size<f32>>(&mut self, input: &Frame<f32, N>, window_value: f32) {
-        for (channel, item) in input.iter().enumerate() {
-            self.input[channel][self.index] = item * window_value;
+        for (item, channel) in input.iter().zip(self.input.iter_mut()) {
+            channel[self.index] = item * window_value;
         }
     }
 
@@ -147,8 +107,8 @@ impl FftWindow {
 
     /// Set FFT outputs to all zeros.
     fn clear_output(&mut self) {
-        for i in 0..self.outputs() {
-            self.output_fft[i].fill(Complex32::default());
+        for channel in self.output_fft.iter_mut() {
+            channel.fill(Complex32::default());
         }
     }
 
@@ -162,11 +122,13 @@ impl FftWindow {
     fn reset(&mut self, start_index: usize) {
         self.samples = 0;
         self.index = start_index;
-        for channel in 0..self.inputs() {
-            self.input[channel].fill(0.0);
+
+        for channel in self.input.iter_mut() {
+            channel.fill(0.0);
         }
-        for channel in 0..self.outputs() {
-            self.output[channel].fill(0.0);
+
+        for channel in self.output.iter_mut() {
+            channel.fill(0.0);
         }
     }
 
@@ -182,15 +144,28 @@ impl FftWindow {
     fn is_fft_time(&self) -> bool {
         self.index == 0 && self.samples >= self.length as u32
     }
+
+    fn forward_transform(&mut self, fft: &dyn RealFft) {
+        let last = self.bins() - 1;
+        for (input, input_fft) in self.input.iter_mut().zip(self.input_fft.iter_mut()) {
+            fft.fft(input.as_mut_slice(), input_fft.as_mut_slice());
+            // unpack
+            input_fft[last] = Complex32::new(input_fft[0].im, 0.0);
+            input_fft[0].im = 0.0;
+        }
+    }
+
+    fn inverse_transform(&mut self, fft: &dyn RealFft) {
+        let last = self.bins() - 1;
+        for (output_fft, output_scalar) in self.output_fft.iter_mut().zip(self.output.iter_mut()) {
+            // repack
+            output_fft[0].im = output_fft[last].re;
+
+            fft.ifft(output_fft.as_mut_slice(), output_scalar.as_mut_slice());
+        }
+    }
 }
 
-/// Frequency domain resynthesizer. Processes windows of input samples with an overlap of four.
-/// Each window is Fourier transformed and then processed into output spectra
-/// by the user supplied processing function.
-/// The output windows are finally inverse transformed into the outputs.
-/// The latency is equal to the window length.
-/// If any output is a copy of an input, then the input will be reconstructed exactly once
-/// the windows are all overlapping, which happens one window length beyond latency.
 #[derive(Clone)]
 pub struct Resynth<'a, I, O, F>
 where
@@ -213,8 +188,6 @@ where
     sample_rate: f64,
     /// Number of processed samples.
     samples: u32,
-    /// Normalizing term for FFT and overlap-add.
-    z: f32,
 }
 
 impl<'a, I, O, F> Resynth<'a, I, O, F>
@@ -223,6 +196,8 @@ where
     O: Size<f32>,
     F: FnMut(&mut FftWindow) + Clone + Send + Sync,
 {
+    const Z: f32 = 2.0 / 3.0;
+
     /// Number of FFT bins. Equals the length of each frequency domain vector in FFT windows.
     #[inline]
     pub fn bins(&self) -> usize {
@@ -235,10 +210,8 @@ where
         self.window_length
     }
 
-    /// Create new resynthesizer. Window length must be a power of two between 4 and 32768.
     pub fn new(fft: &'a dyn RealFft, processing: F) -> Self {
         let window_length = fft.real_size();
-        assert!(window_length >= 4 && window_length.is_power_of_two());
 
         let mut window_function = Vec::with_capacity(window_length);
 
@@ -271,7 +244,6 @@ where
             processing,
             sample_rate: DEFAULT_SR,
             samples: 0,
-            z: 2.0 / 3.0,
         }
     }
 }
@@ -306,7 +278,7 @@ where
         for window in self.window.iter_mut() {
             let window_value = self.window_function[window.index()];
             window.write(input, window_value);
-            output += window.read(window_value * self.z);
+            output += window.read(window_value * Self::Z);
             window.advance();
         }
 
@@ -314,23 +286,12 @@ where
 
         if self.samples & ((self.window_length as u32 >> 2) - 1) == 0 {
             for window in self.window.iter_mut().filter(|window| window.is_fft_time()) {
-                for channel in 0..I::USIZE {
-                    let (input, input_fft) = window.forward_vectors(channel);
-                    self.fft.fft(input.as_mut_slice(), input_fft.as_mut_slice());
-                }
-
+                window.forward_transform(self.fft);
                 window.clear_output();
 
                 (self.processing)(window);
 
-                window.extend_values();
-
-                for channel in 0..O::USIZE {
-                    let (output_fft, output_scalar) = window.inverse_vectors(channel);
-
-                    self.fft
-                        .ifft(output_fft.as_mut_slice(), output_scalar.as_mut_slice());
-                }
+                window.inverse_transform(self.fft);
             }
         }
         output
