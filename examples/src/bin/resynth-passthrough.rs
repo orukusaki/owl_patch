@@ -29,9 +29,9 @@ fn run(mut pv: ProgramVector) -> ! {
 
     let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
 
-    let fft = Box::new(pv.fft_real(FFT_WIDTH).unwrap());
+    let fft = pv.fft_real(FFT_WIDTH).unwrap();
 
-    let mut unit = build_network(fft.as_ref(), audio_settings.sample_rate as f32);
+    let mut unit = build_network(fft, audio_settings.sample_rate as f32);
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
     pv.meta().set_heap_bytes_used(heap_bytes_used());
@@ -49,9 +49,10 @@ fn run(mut pv: ProgramVector) -> ! {
 
 #[inline(never)]
 fn build_network(
-    fft: &dyn RealFft,
+    fft: RealFft,
     sample_rate: f32,
-) -> Box<An<impl AudioNode<Inputs = U1, Outputs = U2> + use<'_>>> {
+) -> Box<An<impl AudioNode<Inputs = U1, Outputs = U2>>> {
+    let fft_size = fft.real_size();
     let resynth = |fft| {
         An(Resynth::<U1, U1, _>::new(fft, move |fft| {
             for i in 0..fft.bins() {
@@ -60,5 +61,5 @@ fn build_network(
         }))
     };
 
-    Box::new((resynth(fft)) ^ delay((fft.real_size() as f32) / sample_rate))
+    Box::new((resynth(fft)) ^ delay((fft_size as f32) / sample_rate))
 }

@@ -44,14 +44,14 @@ fn run(mut pv: ProgramVector) -> ! {
     let attack = Shared::new(0.0);
     let release = Shared::new(0.0);
 
-    let fft = Box::new(pv.fft_real(FFT_WIDTH).unwrap());
+    let fft = pv.fft_real(FFT_WIDTH).unwrap();
 
     let mut unit = build_network(
         bands.clone(),
         formant_shift.clone(),
         attack.clone(),
         release.clone(),
-        fft.as_ref(),
+        fft,
     );
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
@@ -88,8 +88,8 @@ fn build_network(
     formant_shift: Shared,
     attack: Shared,
     release: Shared,
-    fft: &dyn RealFft,
-) -> Box<An<impl AudioNode + use<'_>>> {
+    fft: RealFft,
+) -> Box<An<impl AudioNode>> {
     Box::new({
         let mut envelopes = EnvelopeBank::<BINS>::new(0.0, 0.0);
         let mut amplitudes = [0.0; BINS];

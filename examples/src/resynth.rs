@@ -145,7 +145,7 @@ impl FftWindow {
         self.index == 0 && self.samples >= self.length as u32
     }
 
-    fn forward_transform(&mut self, fft: &dyn RealFft) {
+    fn forward_transform(&mut self, fft: &RealFft) {
         let last = self.bins() - 1;
         for (input, input_fft) in self.input.iter_mut().zip(self.input_fft.iter_mut()) {
             fft.fft(input.as_mut_slice(), input_fft.as_mut_slice());
@@ -155,7 +155,7 @@ impl FftWindow {
         }
     }
 
-    fn inverse_transform(&mut self, fft: &dyn RealFft) {
+    fn inverse_transform(&mut self, fft: &RealFft) {
         let last = self.bins() - 1;
         for (output_fft, output_scalar) in self.output_fft.iter_mut().zip(self.output.iter_mut()) {
             // repack
@@ -167,13 +167,13 @@ impl FftWindow {
 }
 
 #[derive(Clone)]
-pub struct Resynth<'a, I, O, F>
+pub struct Resynth<I, O, F>
 where
     I: Size<f32>,
     O: Size<f32>,
     F: FnMut(&mut FftWindow) + Clone + Send + Sync,
 {
-    fft: &'a dyn RealFft,
+    fft: RealFft,
 
     _marker: core::marker::PhantomData<(I, O)>,
     /// FFT windows.
@@ -190,7 +190,7 @@ where
     samples: u32,
 }
 
-impl<'a, I, O, F> Resynth<'a, I, O, F>
+impl<I, O, F> Resynth<I, O, F>
 where
     I: Size<f32>,
     O: Size<f32>,
@@ -210,7 +210,7 @@ where
         self.window_length
     }
 
-    pub fn new(fft: &'a dyn RealFft, processing: F) -> Self {
+    pub fn new(fft: RealFft, processing: F) -> Self {
         let window_length = fft.real_size();
 
         let mut window_function = Vec::with_capacity(window_length);
@@ -248,7 +248,7 @@ where
     }
 }
 
-impl<I, O, F> AudioNode for Resynth<'_, I, O, F>
+impl<I, O, F> AudioNode for Resynth<I, O, F>
 where
     I: Size<f32>,
     O: Size<f32>,
@@ -286,12 +286,12 @@ where
 
         if self.samples & ((self.window_length as u32 >> 2) - 1) == 0 {
             for window in self.window.iter_mut().filter(|window| window.is_fft_time()) {
-                window.forward_transform(self.fft);
+                window.forward_transform(&self.fft);
                 window.clear_output();
 
                 (self.processing)(window);
 
-                window.inverse_transform(self.fft);
+                window.inverse_transform(&self.fft);
             }
         }
         output

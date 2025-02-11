@@ -10,6 +10,7 @@ pub mod midi_message;
 
 #[cfg(feature = "fastmaths")]
 pub mod fastmaths;
+#[cfg(target_arch = "arm")]
 pub mod fft;
 pub mod interpolation;
 pub mod program_vector;
