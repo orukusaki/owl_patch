@@ -122,10 +122,10 @@ Experimental, but already pretty usable.
 - Get i/o callibration data for volts-per-octave conversions
 - Get system log / pow tables to perform fast maths functions
 - Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
+- FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 
 ### Todo List:
 
-- FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
 - Add support for display devices
 
 ### Maybe pile:

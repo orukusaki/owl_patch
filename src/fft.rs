@@ -1,11 +1,16 @@
-//! FFT instances using CMSIS via FFI
+//! FFT instances using CMSIS via FFI. Use the [ProgramVector] instance to create an fft processor.
+//! See the [vocoder] example for more
+//!
+//! [ProgramVector]: crate::program_vector::ProgramVector
+//! [vocoder]: https://github.com/orukusaki/owl_patch/blob/main/examples/src/bin/vocoder.rs
 use cmsis_dsp_sys_pregenerated::{
     arm_cfft_f32, arm_cfft_instance_f32, arm_rfft_fast_f32, arm_rfft_fast_instance_f32,
 };
 use num::Complex;
 
 /// FFT Size.
-/// Avoid 128 as it seems to be broken in the current device firmware
+///
+/// <div class="warning">Avoid Size128 for RealFFT, as it seems to be broken in the current device firmware</div>
 #[derive(Clone, Copy)]
 #[repr(usize)]
 pub enum FftSize {
@@ -27,7 +32,11 @@ pub enum FftSize {
     Size4096 = 4096,
 }
 
-/// Real FFT Processor - a wrapper around arm_rfft_fast_instance_f32
+/// Real FFT Processor - a wrapper around arm_rfft_fast_instance_f32.
+///
+/// Create using [ProgramVector::fft_real()]
+///
+/// [ProgramVector::fft_real()]: crate::program_vector::ProgramVector::fft_real
 pub struct RealFft {
     instance: arm_rfft_fast_instance_f32,
 }
@@ -44,7 +53,10 @@ impl RealFft {
     pub fn complex_size(&self) -> usize {
         (self.instance.fftLenRFFT / 2) as usize
     }
-    /// Perform forward FFT transform
+    /// Perform forward FFT transform.
+    ///
+    /// The length of `src` must be >= the Real Fft Length
+    /// `dest` must have a length >= the complex size (real size / 2)
     pub fn fft(&self, src: &mut [f32], dest: &mut [Complex<f32>]) {
         assert!(src.len() >= self.real_size(), "Input slice too small");
         assert!(dest.len() >= self.complex_size(), "Output slice too small");
@@ -59,6 +71,9 @@ impl RealFft {
         }
     }
     /// Perform inverse FFT transform
+    ///
+    /// The length of `src` must be >= the complex size (real size / 2)
+    /// `dest` must have a length >= the Real Fft Length
     pub fn ifft(&self, src: &mut [Complex<f32>], dest: &mut [f32]) {
         assert!(src.len() >= self.complex_size(), "Input slice too small");
         assert!(dest.len() >= self.real_size(), "Output slice too small");
@@ -95,7 +110,11 @@ impl Clone for RealFft {
 unsafe impl Send for RealFft {}
 unsafe impl Sync for RealFft {}
 
-/// Real Complex Processor - a wrapper around arm_cfft_instance_f32
+/// Real Complex Processor - a wrapper around arm_cfft_instance_f32.
+///
+/// Create using [ProgramVector::fft_complex()]
+///
+/// [ProgramVector::fft_complex()]: crate::program_vector::ProgramVector::fft_complex
 pub struct ComplexFft {
     instance: arm_cfft_instance_f32,
 }
