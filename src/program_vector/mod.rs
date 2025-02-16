@@ -1,8 +1,10 @@
 //! Communication with the Host OS
 extern crate alloc;
-use num::FromPrimitive;
-
+use crate::fft::{ComplexFft, FftSize, RealFft};
+use cmsis_dsp_sys_pregenerated::{arm_cfft_instance_f32, arm_rfft_fast_instance_f32};
+use core::mem::MaybeUninit;
 use core::slice;
+use num::FromPrimitive;
 
 use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
 
@@ -30,9 +32,6 @@ pub use resources::Resources;
 
 mod service_call;
 use service_call::{ServiceCall, SystemFunction};
-
-#[cfg(target_arch = "arm")]
-mod fft;
 
 const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
 const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
@@ -188,6 +187,36 @@ impl ProgramVector {
     /// Get resources service
     pub fn resources(&self) -> Resources {
         Resources::new(&self.service_call)
+    }
+
+    /// Create a new Real FFT processor instance
+    pub fn fft_real(&self, size: FftSize) -> Result<RealFft, &str> {
+        let mut instance = MaybeUninit::<arm_rfft_fast_instance_f32>::zeroed();
+
+        self.service_call
+            .init_rfft(instance.as_mut_ptr(), size as usize)?;
+
+        // Check it really got initialised.  We created it zeroed, so if something went wrong it would still be zeroed now
+        if unsafe { instance.assume_init_ref().fftLenRFFT } as usize != size as usize {
+            Err("rfft instance was not initialised")
+        } else {
+            Ok(unsafe { RealFft::new(instance.assume_init()) })
+        }
+    }
+
+    /// Create a new Complex FFT processor instance
+    pub fn fft_complex(&self, size: FftSize) -> Result<ComplexFft, &str> {
+        let mut instance = MaybeUninit::<arm_cfft_instance_f32>::zeroed();
+
+        self.service_call
+            .init_cfft(instance.as_mut_ptr(), size as usize)?;
+
+        // Check it really got initialised.  We created it zeroed, so if something went wrong it would still be zeroed now
+        if unsafe { instance.assume_init_ref().fftLen } as usize != size as usize {
+            Err("rfft instance was not initialised")
+        } else {
+            Ok(unsafe { ComplexFft::new(instance.assume_init()) })
+        }
     }
 }
 

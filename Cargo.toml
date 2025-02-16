@@ -1,16 +1,13 @@
 [package]
 name = "owl_patch"
 description = "Rust SDK for Rebel Technology Owl2/3 devices"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["Peter Smith <peter@orukusaki.co.uk>"]
 license = "MIT OR Apache-2.0"
 keywords = ["dsp", "embedded", "synthesizer", "audio", "owl"]
 categories = ["multimedia::audio", "no-std", "embedded"]
 repository = "https://github.com/orukusaki/owl_patch"
-
-[package.metadata.docs.rs]
-default-target = "thumbv7em-none-eabihf"
 
 [dependencies]
 num = {version = "0.4", default-features = false}
@@ -20,9 +17,7 @@ talc = {version = "4.4.1", features = ["counters"], optional = true}
 spin = "0.9.8"
 owl_patch_macros = "0.1.0"
 cfg-if = "1.0.0"
-
-[target.'cfg(target_arch = "arm")'.dependencies]
-cmsis_dsp_sys_pregenerated = {version = "0.1.0"}
+cmsis_dsp_sys_pregenerated = "0.1.0"
 
 [build-dependencies]
 bindgen = {version = "0.70.1"}

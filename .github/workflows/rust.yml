@@ -25,7 +25,7 @@ jobs:
     - name: Clippy check
       run: cargo clippy -- -D clippy::all
     - name: Generate docs
-      run: cargo doc --no-deps --target=thumbv7em-none-eabihf
+      run: cargo doc --no-deps
     - name: Build examples
       working-directory: examples
       run: cargo build --release --bins
