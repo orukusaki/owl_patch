@@ -31,6 +31,9 @@ pub use resources::Resources;
 mod service_call;
 use service_call::{ServiceCall, SystemFunction};
 
+#[cfg(target_arch = "arm")]
+mod fft;
+
 const CONFIGURATION_ERROR_STATUS: i8 = ffi::CONFIGURATION_ERROR_STATUS as i8;
 const AUDIO_FORMAT_24B16: u8 = ffi::AUDIO_FORMAT_24B16 as u8;
 const AUDIO_FORMAT_24B32: u8 = ffi::AUDIO_FORMAT_24B32 as u8;
