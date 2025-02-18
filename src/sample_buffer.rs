@@ -4,7 +4,10 @@ extern crate alloc;
 
 use core::{
     marker::PhantomData,
-    ops::{AddAssign, Deref, DerefMut, DivAssign, MulAssign, Neg, RemAssign, SubAssign},
+    ops::{
+        AddAssign, Deref, DerefMut, DivAssign, MulAssign, Neg, RemAssign, ShlAssign, ShrAssign,
+        SubAssign,
+    },
 };
 
 use alloc::vec;
@@ -729,6 +732,8 @@ impl_op!(SubAssign, sub_assign);
 impl_op!(MulAssign, mul_assign);
 impl_op!(DivAssign, div_assign);
 impl_op!(RemAssign, rem_assign);
+impl_op!(ShlAssign, shl_assign);
+impl_op!(ShrAssign, shr_assign);
 
 impl<F, S, C> MulAddAssign<F, F> for Buffer<S, C>
 where
