@@ -1,52 +1,133 @@
 extern crate alloc;
 
-use core::option::Option;
+use core::{marker::PhantomData, option::Option};
 
 use alloc::boxed::Box;
-use spin::Mutex;
+use embedded_graphics_core::{
+    pixelcolor::{Gray8, Rgb565},
+    prelude::{DrawTarget, PixelColor},
+};
+use embedded_graphics_framebuf::{backends::FrameBufferBackend, FrameBuf};
+use spin::{Mutex, MutexGuard};
 
-static DRAW_CALLBACK: Mutex<Option<Box<dyn FnMut(&mut Screen) + Send>>> = Mutex::new(None);
+use super::service_call::{ServiceCall, SystemFunction};
 
-pub extern "C" fn draw_callback(pixels: *mut u8, width: u16, height: u16) {
-    if let Some(callback) = DRAW_CALLBACK.lock().as_mut() {
-        callback(&mut Screen::new(pixels, width, height));
+// tood: some generic way to abstract over screen type - maybe using <impl Into<Grey8>>
+// but maybe that should be optional? If a patch wants to provide a different mono/colour
+// callback, then shouldn't we let them?
+// on_draw_colour, on_draw_mono, on_draw etc?
+// The actual callback needs to respect the device type - to avoid memory problems from the different buffer sizes
+// So maybe in the generic case we need one or two converting buffers, that convert on set/get
+
+// static DRAW_CALLBACK_MONO: Mutex<
+//     Option<Box<dyn FnMut(&mut FrameBuf<Gray8, ScreenBuffer<Gray8>>) + Send>>,
+// > = Mutex::new(None);
+
+// static DRAW_CALLBACK_COLOR: Mutex<
+//     Option<Box<dyn FnMut(&mut FrameBuf<Rgb565, ScreenBuffer<Rgb565>>) + Send>>,
+// > = Mutex::new(None);
+
+pub extern "C" fn draw_callback_mono(pixels: *mut u8, width: u16, height: u16) {
+    if let Some(callback) = Screen::<Gray8>::callback().as_mut() {
+        let screen = ScreenBuffer::<Gray8>::new(pixels, width, height);
+        let mut buff = FrameBuf::new(screen, width as usize, height as usize);
+        callback(&mut buff);
     }
 }
 
-pub struct Screen<'a> {
-    pixels: &'a mut [u8],
-    width: usize,
-    height: usize,
+pub extern "C" fn draw_callback_color(pixels: *mut u8, width: u16, height: u16) {
+    if let Some(callback) = Screen::<Rgb565>::callback().as_mut() {
+        let screen = ScreenBuffer::<Rgb565>::new(pixels, width, height);
+        let mut buff = FrameBuf::new(screen, width as usize, height as usize);
+        callback(&mut buff);
+    }
 }
 
-impl<'a> Screen<'a> {
-    pub fn new(pixels: *mut u8, width: u16, height: u16) -> Self {
-        // TODO: How can we possibly know whether it's a monocrome or colour screen?
-        // It'd be nice to know = the slice would be double sized on a colour screen (RGB565)
-        // Does it need to be generic? Seems like the patch would have to know - at least in the C API a patch is going to be either
-        // a MonochromeScreenPatch or ColourScreenPatch.
-        // Maybe we can go one better and provide a generic API - but that will probably involve compromises.
-        // It'd be nice to actually know...
-        let pixels = unsafe { core::slice::from_raw_parts_mut(pixels, (width * height) as usize) };
+pub struct Screen<C: PixelColor> {
+    _phantom: PhantomData<C>,
+}
+
+impl Screen<Gray8> {
+    pub(crate) fn init(service_call: &mut ServiceCall) -> Self {
+        let _ = service_call.register_callback(
+            SystemFunction::SystemFunctionDraw,
+            draw_callback_mono as *mut _,
+        );
 
         Self {
-            pixels,
-            width: width as usize,
-            height: height as usize,
+            _phantom: PhantomData,
+        }
+    }
+    pub fn on_draw(
+        &self,
+        callback: impl FnMut(&mut FrameBuf<Gray8, ScreenBuffer<Gray8>>) + Send + 'static,
+    ) {
+        Self::callback().replace(Box::new(callback));
+    }
+
+    fn callback<'a>(
+    ) -> MutexGuard<'a, Option<Box<dyn FnMut(&mut FrameBuf<Gray8, ScreenBuffer<Gray8>>) + Send>>>
+    {
+        static DRAW_CALLBACK: Mutex<
+            Option<Box<dyn FnMut(&mut FrameBuf<Gray8, ScreenBuffer<Gray8>>) + Send>>,
+        > = Mutex::new(None);
+
+        DRAW_CALLBACK.lock()
+    }
+}
+
+impl Screen<Rgb565> {
+    pub(crate) fn init(service_call: &mut ServiceCall) -> Self {
+        let _ = service_call.register_callback(
+            SystemFunction::SystemFunctionDraw,
+            draw_callback_color as *mut _,
+        );
+
+        Self {
+            _phantom: PhantomData,
         }
     }
 
-    pub fn pixels(&mut self) -> &mut [u8] {
-        self.pixels
+    pub fn on_draw(
+        &self,
+        callback: impl FnMut(&mut FrameBuf<Rgb565, ScreenBuffer<Rgb565>>) + Send + 'static,
+    ) {
+        Self::callback().replace(Box::new(callback));
     }
 
-    pub fn get_pixel(&self, x: usize, y: usize) -> u8 {
-        let index = x.min(self.width) * y.min(self.height);
-        self.pixels[index]
+    fn callback<'a>(
+    ) -> MutexGuard<'a, Option<Box<dyn FnMut(&mut FrameBuf<Rgb565, ScreenBuffer<Rgb565>>) + Send>>>
+    {
+        static DRAW_CALLBACK: Mutex<
+            Option<Box<dyn FnMut(&mut FrameBuf<Rgb565, ScreenBuffer<Rgb565>>) + Send>>,
+        > = Mutex::new(None);
+
+        DRAW_CALLBACK.lock()
+    }
+}
+
+pub struct ScreenBuffer<'a, C: PixelColor>(&'a mut [C]);
+
+impl<'a, C: PixelColor> ScreenBuffer<'a, C> {
+    pub fn new(pixels: *mut u8, width: u16, height: u16) -> Self {
+        Self(unsafe {
+            core::slice::from_raw_parts_mut(pixels as *mut C, (width * height) as usize)
+        })
+    }
+}
+
+impl<'a, C: PixelColor> FrameBufferBackend for ScreenBuffer<'a, C> {
+    type Color = C;
+
+    fn set(&mut self, index: usize, color: Self::Color) {
+        self.0[index] = color;
     }
 
-    pub fn set_pixel(&mut self, x: usize, y: usize, value: u8) {
-        let index = x.min(self.width) * y.min(self.height);
-        self.pixels[index] = value;
+    fn get(&self, index: usize) -> Self::Color {
+        self.0[index]
+    }
+
+    fn nr_elements(&self) -> usize {
+        self.0.len()
     }
 }
