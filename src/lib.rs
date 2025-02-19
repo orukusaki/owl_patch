@@ -15,6 +15,7 @@ pub mod fft;
 pub mod interpolation;
 pub mod program_vector;
 pub mod sample_buffer;
+pub mod screen_buffer;
 pub mod volts_per_octave;
 
 pub use ffi::openware_midi_control::{

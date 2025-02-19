@@ -8,6 +8,10 @@ use super::service_call::ServiceCall;
 use crate::resource::Resource;
 
 /// Used to fetch resource files
+///
+/// /// Use [ProgramVector::resources()] to obtain this service.
+///
+/// [ProgramVector::resources()]: crate::program_vector::ProgramVector::resources
 pub struct Resources<'a> {
     service_call: &'a ServiceCall,
 }

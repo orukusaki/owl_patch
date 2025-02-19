@@ -81,6 +81,10 @@ impl ConvertFrom<Samplei32> for i32 {
 }
 
 /// Container for the input and output audio buffers
+///
+/// Use [ProgramVector::audio()] to access the audio buffers
+///
+/// [ProgramVector::audio()]: crate::program_vector::ProgramVector::audio
 pub struct AudioBuffers {
     input: &'static *mut i32,
     output: &'static *mut i32,

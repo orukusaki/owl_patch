@@ -1,5 +1,6 @@
 //! Communication with the Host OS
 extern crate alloc;
+
 use crate::fft::{ComplexFft, FftSize, RealFft};
 use cmsis_dsp_sys_pregenerated::{arm_cfft_instance_f32, arm_rfft_fast_instance_f32};
 use core::mem::MaybeUninit;
@@ -25,6 +26,7 @@ mod midi;
 pub use midi::Midi;
 
 mod screen;
+pub use screen::Screen;
 
 mod meta;
 pub use meta::*;
@@ -153,6 +155,11 @@ impl ProgramVector {
         *self
             .midi
             .get_or_insert_with(|| Midi::init(&mut self.service_call))
+    }
+
+    /// Get screen
+    pub fn screen(&mut self) -> Screen {
+        Screen::new(&self.service_call)
     }
 
     /// Get patch parameter controller
