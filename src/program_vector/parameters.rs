@@ -9,6 +9,10 @@ use spin::Mutex;
 pub use crate::ffi::openware_midi_control::{PatchButtonId, PatchParameterId};
 
 /// Handles the Patch input and output parameters; knobs and buttons etc
+///
+/// Use [ProgramVector::parameters()] to obtain this service.
+///
+/// [ProgramVector::parameters()]: crate::program_vector::ProgramVector::parameters
 #[derive(Clone, Copy)]
 pub struct Parameters {
     parameters: &'static [i16],

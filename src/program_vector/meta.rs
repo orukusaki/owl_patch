@@ -32,6 +32,10 @@ pub const PRISM_HARDWARE: u8 = ffi::PRISM_HARDWARE as u8;
 pub const PLAYER_HARDWARE: u8 = ffi::PLAYER_HARDWARE as u8;
 
 /// Program Metadata
+///
+/// Use [ProgramVector::meta()] to obtain this service.
+///
+/// [ProgramVector::meta()]: crate::program_vector::ProgramVector::meta
 pub struct Meta {
     cycles_per_block: &'static u32,
     heap_bytes_used: &'static mut u32,
