@@ -15,7 +15,7 @@ use embedded_graphics::{
     pixelcolor::BinaryColor,
     prelude::*,
     primitives::{PrimitiveStyleBuilder, Rectangle},
-    text::{renderer::TextRenderer, Alignment, Baseline, Text, TextStyleBuilder},
+    text::{Alignment, Text, TextStyleBuilder},
 };
 use owl_patch::{
     patch,
