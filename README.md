@@ -43,7 +43,7 @@ rustup target add thumbv7em-none-eabihf
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
 [dependencies]
-owl_patch = "0.3.1"
+owl_patch = "0.4.0"
 ```
 It is also a good idea to add this to your Cargo.toml:
 ```toml
@@ -118,15 +118,15 @@ Experimental, but already pretty usable.
 - Simple Audio Buffer implementation, supporting different formats and layouts
 - Register, get, and set Patch Parameters, with callback for button events
 - Send & Receive Midi messages
-- Debug messages
+- Debug / error messages
 - Get i/o callibration data for volts-per-octave conversions
 - Get system log / pow tables to perform fast maths functions
-- Load resource files with `OWL_SERVICE_LOAD_RESOURCE` service call
-- FFT init service calls with `OWL_SERVICE_ARM_RFFT_FAST_INIT_F32` and `OWL_SERVICE_ARM_CFFT_INIT_F32`
+- Load resource files
+- FFT init service calls 
+- Write to screen buffer (on devices with a screen)
 
 ### Todo List:
-
-- Add support for display devices
+- Empty!!
 
 ### Maybe pile:
 
@@ -134,6 +134,7 @@ Experimental, but already pretty usable.
 - Invert some params for `hardware_version == OWL_MODULAR_HARDWARE`
 - Support for lower checksum versions
 - Create a Cargo project template
+- Support for Colour screens
 
 ## License
 
