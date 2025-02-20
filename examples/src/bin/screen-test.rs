@@ -11,9 +11,11 @@ use core::{
 
 use alloc::{boxed::Box, sync::Arc};
 use embedded_graphics::{
+    mono_font::{ascii::FONT_6X10, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
     primitives::{PrimitiveStyleBuilder, Rectangle},
+    text::{renderer::TextRenderer, Alignment, Baseline, Text, TextStyleBuilder},
 };
 use owl_patch::{
     patch,
@@ -39,6 +41,9 @@ fn run(mut pv: ProgramVector) -> ! {
             .stroke_width(3)
             .fill_color(BinaryColor::Off)
             .build();
+        let character_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+        let text_style = TextStyleBuilder::new().alignment(Alignment::Center).build();
+
         let volume = volume.clone();
         pv.screen().on_draw(move |screen| {
             let vol = volume.load(Ordering::Relaxed);
@@ -47,7 +52,37 @@ fn run(mut pv: ProgramVector) -> ! {
             let top_corner = screen_centre - Point::new(vol, vol);
             let size = Size::new(vol as u32 * 2, vol as u32 * 2);
 
-            // let _ = screen.clear(BinaryColor::Off);
+            let _ = screen.clear(BinaryColor::Off);
+
+            let _ = Text::with_text_style(
+                "Top",
+                screen_centre + Point::new(0, -20),
+                character_style,
+                text_style,
+            )
+            .draw(screen);
+            let _ = Text::with_text_style(
+                "Bottom",
+                screen_centre + Point::new(0, 20),
+                character_style,
+                text_style,
+            )
+            .draw(screen);
+            let _ = Text::with_text_style(
+                "Left",
+                screen_centre + Point::new(-50, 0),
+                character_style,
+                text_style,
+            )
+            .draw(screen);
+            let _ = Text::with_text_style(
+                "Right",
+                screen_centre + Point::new(50, 0),
+                character_style,
+                text_style,
+            )
+            .draw(screen);
+
             let _ = Rectangle::new(top_corner, size)
                 .into_styled(style)
                 .draw(screen);
