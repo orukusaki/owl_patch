@@ -15,20 +15,21 @@ extern crate alloc;
 use alloc::boxed::Box;
 use fundsp::math::rnd1;
 use num_traits::Float;
-use owl_patch::sample_buffer::Interleaved;
+use owl_patch::interpolation::IndexCubicSmooth;
+use owl_patch::sample_buffer::{ConvertFrom, InterleavedBuffer, MonoBuffer};
 use owl_patch::PatchParameterId;
 use owl_patch::{
     fastmaths::FastFloat,
     patch,
     program_vector::{error, heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, ConvertTo},
+    sample_buffer::ConvertTo,
 };
 
 #[patch("Beat Slicer")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
-    let mut buffer: Buffer<Interleaved, Box<[f32]>> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer =
+        InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     let resources = pv.resources();
 
@@ -49,18 +50,23 @@ fn run(mut pv: ProgramVector) -> ! {
         boxed_data.as_ref()
     };
 
-    // Allocate an f32 sample buffer, and convert the samples from the resource file.
-    // Using something like byte_slice_cast would be nice here, but there's no way to ensure the resource bytes are correctly aligned.
-    let mut sample_buffer = Buffer::new_mono(resource.size() / 2);
-
+    // Read the data into an i16 buffer
+    let mut data_buffer = MonoBuffer::<i16>::new(resource.size() / 2);
     for (insamp, buffsamp) in data
         .iter()
         .array_chunks::<2>()
         .map(|bytes| i16::from_le_bytes(bytes.map(|b| *b)))
-        .zip(sample_buffer.samples_mut())
+        .zip(data_buffer.samples_mut())
     {
-        *buffsamp = insamp as f32 * (1.0 / i16::MAX as f32);
+        *buffsamp = insamp;
     }
+
+    // Allocate an f32 sample buffer, and convert the samples from the resource file.
+    let mut sample_buffer = MonoBuffer::<f32>::new(data_buffer.len());
+    sample_buffer.convert_from(&data_buffer);
+
+    // i16 buffer is no longer needed
+    drop(data_buffer);
 
     let mut index = 0.0;
     let mut slice_start = 0.0;

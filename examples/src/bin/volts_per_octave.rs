@@ -15,7 +15,7 @@ use owl_patch::{
     midi_message::MidiMessage,
     patch,
     program_vector::{heap_bytes_used, Midi, Parameters, ProgramVector},
-    sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
+    sample_buffer::{BufferByChannel, ConvertFrom, ConvertTo},
     volts_per_octave::{Note, Volts, VoltsPerSample},
     PatchButtonId, PatchParameterId,
 };
@@ -30,8 +30,7 @@ const GATE_OUT: PatchButtonId = PatchButtonId::BUTTON_3;
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
     let (vps_in, vps_out) = pv.volts_per_sample();
-    let mut buffer: Buffer<Channels, _> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer = BufferByChannel::new(audio_settings.channels, audio_settings.blocksize);
 
     let parameters = pv.parameters();
     parameters.register(VELOCITY_IN, "Velocity");
@@ -52,14 +51,15 @@ fn run(mut pv: ProgramVector) -> ! {
     pv.audio().run(|input, output| {
         buffer.convert_from(input);
 
-        let mut left = buffer.left_mut().unwrap();
-        in_level.set(left.iter().sum::<f32>() / audio_settings.blocksize as f32);
+        let left = buffer.left_mut().unwrap();
+        in_level.set(left.samples().sum::<f32>() / audio_settings.blocksize as f32);
+
         left.fill(out_level.value());
 
-        if let Some(mut right) = buffer.right_mut() {
+        if let Some(right) = buffer.right_mut() {
             // Update the right side value whenever gate 2 is open
             if parameters.get_button(GATE_IN_B) {
-                let raw_value = right.iter().sum::<f32>() / audio_settings.blocksize as f32;
+                let raw_value = right.samples().sum::<f32>() / audio_settings.blocksize as f32;
                 let note: Note = (vps_in * raw_value).into();
                 let volts: Volts = note.into();
                 right_level = volts / vps_out;

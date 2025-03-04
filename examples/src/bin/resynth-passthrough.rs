@@ -15,7 +15,7 @@ use owl_patch::{
     fft::{FftSize, RealFft},
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, ConvertFrom, ConvertTo},
+    sample_buffer::{ConvertFrom, ConvertTo, InterleavedBuffer},
 };
 
 use fundsp::hacker32::*;
@@ -27,7 +27,8 @@ const FFT_WIDTH: FftSize = FftSize::Size256;
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
 
-    let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer =
+        InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     let fft = pv.fft_real(FFT_WIDTH).unwrap();
 
@@ -38,11 +39,11 @@ fn run(mut pv: ProgramVector) -> ! {
     pv.audio().run(|input, output| {
         buffer.convert_from(input);
 
-        for samples in buffer.frames_mut() {
-            let frame = Frame::from_slice(&samples[..1]);
-            samples.copy_from_slice(unit.tick(frame).as_slice());
+        for frame in buffer.frames_mut() {
+            let fundsp_frame = Frame::from_slice(&frame.as_slice()[..1]);
+            let output = unit.tick(fundsp_frame);
+            frame.as_slice_mut().copy_from_slice(output.as_slice());
         }
-
         buffer.convert_to(output);
     });
 }

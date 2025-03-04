@@ -6,7 +6,7 @@ use alloc::boxed::Box;
 use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, ConvertFrom, ConvertTo},
+    sample_buffer::{ConvertFrom, ConvertTo, InterleavedBuffer},
     PatchParameterId,
 };
 
@@ -17,20 +17,18 @@ fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
 
     // allocate a working buffer. Interleaved allows us to efficiently process data in frames
-    let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer =
+        InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     // Set up FunDsp objects
     let lp_centre = shared(10000.0);
     let hp_centre = shared(10000.0);
     let q = shared(0.7);
 
-    let lp = || (pass() | var(&lp_centre) | var(&q)) >> lowpass();
-    let hp = || (pass() | var(&hp_centre) | var(&q)) >> highpass();
+    let mut network = build_network(lp_centre.clone(), hp_centre.clone(), q.clone());
 
-    let mut unit = Box::new((lp() | lp()) >> (hp() | hp()) >> limiter_stereo(0.00, 0.1));
-
-    unit.allocate();
-    unit.set_sample_rate(audio_settings.sample_rate as f64);
+    network.allocate();
+    network.set_sample_rate(audio_settings.sample_rate as f64);
 
     // Set up input parameters
     let parameters = pv.parameters();
@@ -53,12 +51,28 @@ fn run(mut pv: ProgramVector) -> ! {
 
         buffer.convert_from(input);
 
-        for samples in buffer.frames_mut() {
-            let slice = &mut samples[0..2];
-            let frame = Frame::from_slice(slice);
-            slice.copy_from_slice(unit.tick(frame).as_slice());
+        for frame in buffer.frames_mut() {
+            let fundsp_frame = Frame::from_slice(&frame.as_slice()[..2]);
+            let output = network.tick(fundsp_frame);
+            frame.as_slice_mut()[..2].copy_from_slice(output.as_slice());
         }
 
         buffer.convert_to(output);
     });
+}
+
+// Rust likes to optimize Heap allocation into Stack allocation.  We have very limited stack memory available,
+// moving the network creation into a separate factory function prevents this optimization.
+#[inline(never)]
+fn build_network(
+    lp_centre: Shared,
+    hp_centre: Shared,
+    q: Shared,
+) -> Box<An<impl AudioNode<Inputs = U2, Outputs = U2>>> {
+    // Set up FunDsp objects
+
+    let lp = || (pass() | var(&lp_centre) | var(&q)) >> lowpass();
+    let hp = || (pass() | var(&hp_centre) | var(&q)) >> highpass();
+
+    Box::new((lp() | lp()) >> (hp() | hp()) >> limiter_stereo(0.00, 0.1))
 }
