@@ -38,17 +38,18 @@ fn run(mut pv: ProgramVector) -> ! {
     // For correct reporting, this should be called after all heap allocations are done with.
     pv.meta().set_heap_bytes_used(heap_bytes_used());
 
-    // Main audio loop
-    pv.audio().run(|input, output| {
+    loop {
         let volume = parameters.get(PatchParameterId::PARAMETER_A);
         parameters.set(PatchParameterId::PARAMETER_F, volume);
 
-        buffer.convert_from(input);
+        pv.audio().process(|input, output| {
+            buffer.convert_from(input);
 
-        for mut channel in buffer.channels_mut() {
-            channel *= volume;
-        }
+            for mut channel in buffer.channels_mut() {
+                channel *= volume;
+            }
 
-        buffer.convert_to(output);
-    });
+            buffer.convert_to(output);
+        })
+    }
 }
