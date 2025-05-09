@@ -52,7 +52,7 @@ use core::{
 /// #[patch("My Patch Name")]
 /// fn run(mut pv: ProgramVector) -> ! {
 /// // patch code
-/// # pv.audio().run(|_, _| {});
+/// # pv.audio.run(|_, _| {});
 /// }
 /// ```
 ///

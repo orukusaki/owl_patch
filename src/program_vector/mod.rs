@@ -49,12 +49,13 @@ const AUDIO_FORMAT_CHANNEL_MASK: u8 = ffi::AUDIO_FORMAT_CHANNEL_MASK as u8;
 ///
 /// [#\[patch\]]: crate::patch
 pub struct ProgramVector {
-    meta: Meta,
-    audio: AudioBuffers,
-    parameters: Parameters,
+    /// Metadata
+    pub meta: Meta,
+    /// Audio buffers
+    pub audio: AudioBuffers,
+    /// Patch parameter controller
+    pub parameters: Parameters,
     service_call: ServiceCall,
-    midi: Option<Midi>,
-    volts_per_octave: Option<(VoltsPerSample, VoltsPerSample)>,
 }
 
 #[doc(hidden)]
@@ -84,6 +85,7 @@ impl ProgramVector {
             checksum,
             pv.hardware_version,
             pv.heapLocations,
+            pv.registerPatch,
         );
 
         #[cfg(all(feature = "talc", target_arch = "arm"))]
@@ -94,12 +96,7 @@ impl ProgramVector {
             });
         }
 
-        // Register the patch by calling the provided function in the pv. It seems like the channel counts
-        // are ignored presently, the number of channels set in pv.audio_format is defined by the hardware
-        // The only thing it really does is display the patch name on devices with a screen
-        if let Some(register_patch) = pv.registerPatch {
-            unsafe { register_patch(patch_name, 2, 2) };
-        }
+        meta.register_patch(patch_name);
 
         let (format, channels) = AudioFormat::parse(pv.audio_format);
         let audio_settings = AudioSettings {
@@ -145,36 +142,17 @@ impl ProgramVector {
             meta,
             audio,
             service_call,
-            midi: None,
-            volts_per_octave: None,
         }
     }
 
     /// Get midi send/receive interface
     pub fn midi(&mut self) -> Midi {
-        *self
-            .midi
-            .get_or_insert_with(|| Midi::init(&mut self.service_call))
+        Midi::init(&mut self.service_call)
     }
 
     /// Get screen
     pub fn screen(&mut self) -> Screen {
         Screen::new(&self.service_call)
-    }
-
-    /// Get patch parameter controller
-    pub fn parameters(&self) -> Parameters {
-        self.parameters
-    }
-
-    /// Get patch metadata
-    pub fn meta(&mut self) -> &mut Meta {
-        &mut self.meta
-    }
-
-    /// Get audio buffers
-    pub fn audio(&mut self) -> &mut AudioBuffers {
-        &mut self.audio
     }
 
     /// Get calibrated volts per sample convertors as a pair (input, output)
@@ -184,13 +162,11 @@ impl ProgramVector {
     /// let (vps_in, vps_out) = pv.volts_per_sample();
     /// ```
     pub fn volts_per_sample(&mut self) -> (VoltsPerSample, VoltsPerSample) {
-        *self.volts_per_octave.get_or_insert_with(|| {
-            let parameters = self.service_call.device_parameters();
-            (
-                VoltsPerSample::new(parameters.input_scalar, parameters.input_offset),
-                VoltsPerSample::new(parameters.output_scalar, parameters.output_offset),
-            )
-        })
+        let parameters = self.service_call.device_parameters();
+        (
+            VoltsPerSample::new(parameters.input_scalar, parameters.input_offset),
+            VoltsPerSample::new(parameters.output_scalar, parameters.output_offset),
+        )
     }
 
     /// Get resources service

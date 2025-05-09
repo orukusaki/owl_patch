@@ -33,16 +33,25 @@ pub const PLAYER_HARDWARE: u8 = ffi::PLAYER_HARDWARE as u8;
 
 /// Program Metadata
 ///
-/// Use [ProgramVector::meta()] to obtain this service.
+/// Use [ProgramVector::meta] to obtain this service.
 ///
-/// [ProgramVector::meta()]: crate::program_vector::ProgramVector::meta
+/// [ProgramVector::meta]: crate::program_vector::ProgramVector::meta
 pub struct Meta {
     cycles_per_block: &'static u32,
     heap_bytes_used: &'static mut u32,
     checksum: ProgramVectorChecksum,
     hardware_version: u8,
     heap_locations: *mut MemorySegment,
+    register_patch: Option<
+        unsafe extern "C" fn(
+            name: *const ::core::ffi::c_char,
+            inputChannels: u8,
+            outputChannels: u8,
+        ),
+    >,
 }
+
+unsafe impl Send for Meta {}
 
 impl Meta {
     pub(crate) fn new(
@@ -51,6 +60,13 @@ impl Meta {
         checksum: ProgramVectorChecksum,
         hardware_version: u8,
         heap_locations: *mut MemorySegment,
+        register_patch: Option<
+            unsafe extern "C" fn(
+                name: *const ::core::ffi::c_char,
+                inputChannels: u8,
+                outputChannels: u8,
+            ),
+        >,
     ) -> Self {
         Self {
             cycles_per_block,
@@ -58,6 +74,14 @@ impl Meta {
             checksum,
             hardware_version,
             heap_locations,
+            register_patch,
+        }
+    }
+
+    /// Register the patch, setting its name on display devices.
+    pub fn register_patch(&self, patch_name: *const core::ffi::c_char) {
+        if let Some(register_patch) = self.register_patch {
+            unsafe { register_patch(patch_name, 2, 2) };
         }
     }
 

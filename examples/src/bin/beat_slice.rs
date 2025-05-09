@@ -27,7 +27,7 @@ use owl_patch::{
 
 #[patch("Beat Slicer")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
     let mut buffer =
         InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
@@ -71,16 +71,16 @@ fn run(mut pv: ProgramVector) -> ! {
     let mut index = 0.0;
     let mut slice_start = 0.0;
 
-    let parameters = pv.parameters();
+    let parameters = pv.parameters;
     parameters.register(PatchParameterId::PARAMETER_A, "Divisions");
     parameters.register(PatchParameterId::PARAMETER_B, "Pitch");
 
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
 
     let mut rnd_seed = (parameters.get(PatchParameterId::PARAMETER_A) * 32768.0) as u64;
 
     // Main audio loop
-    pv.audio().run(|_input, output| {
+    pv.audio.run(|_input, output| {
         let divisions = (parameters.get(PatchParameterId::PARAMETER_A) * 6.0)
             .round()
             .fast_exp2();

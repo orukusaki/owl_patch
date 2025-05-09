@@ -10,9 +10,9 @@ pub use crate::ffi::openware_midi_control::{PatchButtonId, PatchParameterId};
 
 /// Handles the Patch input and output parameters; knobs and buttons etc
 ///
-/// Use [ProgramVector::parameters()] to obtain this service.
+/// Use [ProgramVector::parameters] to obtain this service.
 ///
-/// [ProgramVector::parameters()]: crate::program_vector::ProgramVector::parameters
+/// [ProgramVector::parameters]: crate::program_vector::ProgramVector::parameters
 #[derive(Clone, Copy)]
 pub struct Parameters {
     parameters: &'static [i16],
@@ -48,7 +48,7 @@ impl Parameters {
     /// ```
     /// # use owl_patch::{program_vector::Parameters, PatchParameterId};
     /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
-    /// # let parameters = pv.parameters();
+    /// # let parameters = pv.parameters;
     /// // Register an input param
     /// parameters.register(PatchParameterId::PARAMETER_A, "volume");
     /// // Postfixing the name with ">" designates the parameter as an output
@@ -70,7 +70,7 @@ impl Parameters {
     /// ```
     /// # use owl_patch::{program_vector::Parameters, PatchParameterId};
     /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
-    /// # let parameters = pv.parameters();
+    /// # let parameters = pv.parameters;
     /// parameters.register(PatchParameterId::PARAMETER_A, "volume");
     /// let value = parameters.get(PatchParameterId::PARAMETER_A);
     /// ```
@@ -85,7 +85,7 @@ impl Parameters {
     /// ```
     /// # use owl_patch::{program_vector::Parameters, PatchParameterId};
     /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
-    /// # let parameters = pv.parameters();
+    /// # let parameters = pv.parameters;
     /// parameters.register(PatchParameterId::PARAMETER_F, "MyOutput>");
     /// parameters.set(PatchParameterId::PARAMETER_F, 0.5);
     /// ```
@@ -103,7 +103,7 @@ impl Parameters {
     /// ```
     /// # use owl_patch::{program_vector::Parameters, PatchButtonId};
     /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
-    /// # let parameters = pv.parameters();
+    /// # let parameters = pv.parameters;
     /// parameters.on_button_changed(|bid, value, samples| {
     ///     // Do something
     /// });
@@ -119,7 +119,7 @@ impl Parameters {
     /// ```
     /// # use owl_patch::{program_vector::Parameters, PatchButtonId};
     /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
-    /// # let parameters = pv.parameters();
+    /// # let parameters = pv.parameters;
     /// if parameters.get_button(PatchButtonId::BUTTON_1) {
     /// //.. do something
     /// }
@@ -132,7 +132,7 @@ impl Parameters {
     /// ```
     /// # use owl_patch::{program_vector::Parameters, PatchButtonId};
     /// # let mut pv = unsafe { owl_patch::test_harness::program_vector() };
-    /// # let parameters = pv.parameters();
+    /// # let parameters = pv.parameters;
     /// parameters.set_button(PatchButtonId::BUTTON_3, true);
     /// ```
     pub fn set_button(&self, bid: PatchButtonId, state: bool) {

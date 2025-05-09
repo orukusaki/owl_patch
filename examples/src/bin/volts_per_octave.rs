@@ -28,11 +28,11 @@ const GATE_OUT: PatchButtonId = PatchButtonId::BUTTON_3;
 
 #[patch("Volts per octave")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
     let (vps_in, vps_out) = pv.volts_per_sample();
     let mut buffer = BufferByChannel::new(audio_settings.channels, audio_settings.blocksize);
 
-    let parameters = pv.parameters();
+    let parameters = pv.parameters;
     parameters.register(VELOCITY_IN, "Velocity");
     parameters.register(VELOCITY_OUT, "Velocity>");
 
@@ -43,12 +43,12 @@ fn run(mut pv: ProgramVector) -> ! {
     midi.on_receive(midi_callback(&out_level, parameters, vps_out));
     parameters.on_button_changed(button_changed_callback(&in_level, midi, parameters, vps_in));
 
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
 
     let mut right_level = 0.0;
 
     // Main audio loop
-    pv.audio().run(|input, output| {
+    pv.audio.run(|input, output| {
         buffer.convert_from(input);
 
         let left = buffer.left_mut().unwrap();

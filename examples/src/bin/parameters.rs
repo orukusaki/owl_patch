@@ -14,10 +14,10 @@ use owl_patch::{
 
 #[patch("Parameters Example")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
     let mut buffer = BufferByChannel::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
-    let parameters = pv.parameters();
+    let parameters = pv.parameters;
 
     // Register an input param
     parameters.register(PatchParameterId::PARAMETER_A, "volume");
@@ -35,13 +35,13 @@ fn run(mut pv: ProgramVector) -> ! {
     // let _button_state = parameters.get_button(PatchButtonId::BUTTON_2);
 
     // For correct reporting, this should be called after all heap allocations are done with.
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
 
     loop {
         let volume = parameters.get(PatchParameterId::PARAMETER_A);
         parameters.set(PatchParameterId::PARAMETER_F, volume);
 
-        pv.audio().process(|input, output| {
+        pv.audio.process(|input, output| {
             buffer.convert_from(input);
 
             for mut channel in buffer.channels_mut() {

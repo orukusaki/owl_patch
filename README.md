@@ -18,12 +18,12 @@ use owl_patch::{
 
 #[patch("Example Patch")]
 fn main(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
     let mut buffer: BufferByChannel<f32> =
         BufferByChannel::new(audio_settings.channels, audio_settings.blocksize);
 
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
-    pv.audio().run(|input, output| {
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.audio.run(|input, output| {
         buffer.convert_from(input);
         // Do something clever with the samples in the buffer
         buffer.convert_to(output);

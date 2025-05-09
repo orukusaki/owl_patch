@@ -25,7 +25,7 @@ const FFT_WIDTH: FftSize = FftSize::Size256;
 
 #[patch("Passthrough test")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
 
     let mut buffer =
         InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
@@ -35,8 +35,8 @@ fn run(mut pv: ProgramVector) -> ! {
     let mut unit = build_network(fft, audio_settings.sample_rate as f32);
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
-    pv.audio().run(|input, output| {
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.audio.run(|input, output| {
         buffer.convert_from(input);
 
         for frame in buffer.frames_mut() {

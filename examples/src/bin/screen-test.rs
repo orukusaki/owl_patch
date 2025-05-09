@@ -27,10 +27,10 @@ use num_traits::Float;
 
 #[patch("Screen test")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
     let mut buffer = BufferByChannel::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
 
     let volume = Arc::new(AtomicI32::new(0));
 
@@ -91,7 +91,7 @@ fn run(mut pv: ProgramVector) -> ! {
     let mut env = AREnv::default();
 
     // Main audio loop
-    pv.audio().run(|input, output| {
+    pv.audio.run(|input, output| {
         buffer.convert_from(input);
 
         let rms = buffer

@@ -29,12 +29,12 @@ const MAX_BANDS_POWER: f32 = ((FFT_WIDTH as usize >> 1) - 1).count_ones() as f32
 
 #[patch("Vocoder")]
 fn run(mut pv: ProgramVector) -> ! {
-    let audio_settings = pv.audio().settings;
+    let audio_settings = pv.audio.settings;
 
     let mut buffer =
         InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
-    let parameters = pv.parameters();
+    let parameters = pv.parameters;
     parameters.register(PatchParameterId::PARAMETER_A, "Bands");
     parameters.register(PatchParameterId::PARAMETER_B, "Formant Shift");
     parameters.register(PatchParameterId::PARAMETER_C, "Attack");
@@ -56,8 +56,8 @@ fn run(mut pv: ProgramVector) -> ! {
     );
     unit.allocate();
     unit.set_sample_rate(audio_settings.sample_rate as f64);
-    pv.meta().set_heap_bytes_used(heap_bytes_used());
-    pv.audio().run(|input, output| {
+    pv.meta.set_heap_bytes_used(heap_bytes_used());
+    pv.audio.run(|input, output| {
         let bands_power = ((parameters.get(PatchParameterId::PARAMETER_A) + 0.1) * MAX_BANDS_POWER)
             .clamp(0.0, MAX_BANDS_POWER);
 
