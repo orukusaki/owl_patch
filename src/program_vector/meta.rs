@@ -1,4 +1,4 @@
-use core::slice;
+use core::{ffi::CStr, slice};
 
 use crate::ffi::program_vector as ffi;
 pub use ffi::MemorySegment;
@@ -79,9 +79,9 @@ impl Meta {
     }
 
     /// Register the patch, setting its name on display devices.
-    pub fn register_patch(&self, patch_name: *const core::ffi::c_char) {
+    pub fn register_patch(&self, patch_name: &CStr) {
         if let Some(register_patch) = self.register_patch {
-            unsafe { register_patch(patch_name, 2, 2) };
+            unsafe { register_patch(patch_name.as_ptr(), 2, 2) };
         }
     }
 

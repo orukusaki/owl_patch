@@ -3,8 +3,8 @@ extern crate alloc;
 
 use crate::fft::{ComplexFft, FftSize, RealFft};
 use cmsis_dsp_sys_pregenerated::{arm_cfft_instance_f32, arm_rfft_fast_instance_f32};
-use core::mem::MaybeUninit;
 use core::slice;
+use core::{ffi::CStr, mem::MaybeUninit};
 use num::FromPrimitive;
 
 use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
@@ -96,7 +96,7 @@ impl ProgramVector {
             });
         }
 
-        meta.register_patch(patch_name);
+        meta.register_patch(CStr::from_ptr(patch_name));
 
         let (format, channels) = AudioFormat::parse(pv.audio_format);
         let audio_settings = AudioSettings {
