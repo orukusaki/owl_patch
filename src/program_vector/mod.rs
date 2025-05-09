@@ -7,6 +7,9 @@ use core::slice;
 use core::{ffi::CStr, mem::MaybeUninit};
 use num::FromPrimitive;
 
+#[cfg(target_arch = "arm")]
+use cfg_if::cfg_if;
+
 use crate::{ffi::program_vector as ffi, volts_per_octave::VoltsPerSample};
 
 use ffi::ProgramVector as FfiProgramVector;
@@ -91,9 +94,23 @@ impl ProgramVector {
         #[cfg(all(feature = "talc", target_arch = "arm"))]
         {
             let mut talc = talc_heap::ALLOCATOR.lock();
-            meta.memory_segments().iter().for_each(|seg| unsafe {
-                let _ = talc.claim(seg.into());
-            });
+            cfg_if! {
+                if #[cfg(feature = "stack_hack")] {
+                    extern "C" {
+                        static mut _stack: u8;
+                    }
+
+                    meta.memory_segments().iter().for_each(|seg|
+                        if seg.location != &raw mut _stack {
+                            let _ = unsafe {talc.claim(seg.into())};
+                        }
+                    );
+                } else {
+                    meta.memory_segments().iter().for_each(|seg| {
+                        let _ = unsafe {talc.claim(seg.into())};
+                    });
+                }
+            }
         }
 
         meta.register_patch(CStr::from_ptr(patch_name));
@@ -222,7 +239,7 @@ mod talc_heap {
 
     /// get total bytes allocated at present
     pub fn heap_bytes_used() -> usize {
-        ALLOCATOR.lock().get_counters().total_allocated_bytes as usize
+        ALLOCATOR.lock().get_counters().allocated_bytes as usize
     }
 }
 

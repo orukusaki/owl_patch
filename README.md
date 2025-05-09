@@ -104,6 +104,7 @@ The examples in this repo have been tested on a Befaco Lich using Owl2 and Owl3 
 - `talc` (default): Uses the [talc](https://crates.io/crates/talc) crate as the global allocator. If you want to use a different allocator, turn this feature off with `default-features = false`
 - `fastmaths` (default): Enables the fast approximate maths functions in the [fastmaths](https://docs.rs/owl_patch/latest/owl_patch/fastmaths/index.html) module.
 - `vpo_fastmaths` (default): Use fastmaths functions in the [volts_per_octave](https://docs.rs/owl_patch/latest/owl_patch/volts_per_octave/index.html) module to convert between Volts and Frequencies quicker (but less accurately). Requires `fastmaths`.
+- `stack_hack` Uses a slightly dirty hack to get more stack memory - by default you only get 8Kb of stack (and > 8Mb of Heap).
 
 ## Project state
 Experimental, but already pretty usable.

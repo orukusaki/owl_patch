@@ -28,6 +28,9 @@ pub mod resource;
 #[doc(hidden)]
 pub mod test_harness;
 
+#[cfg(target_arch = "arm")]
+use cfg_if::cfg_if;
+
 use ffi::program_vector::ProgramVector as FfiProgramVector;
 
 use core::{
@@ -145,6 +148,12 @@ unsafe extern "C" fn reset_handler() {
     // This function is created by the patch! macro.
     extern "Rust" {
         fn __main() -> !;
+    }
+
+    cfg_if! {
+        if #[cfg(feature = "stack_hack")] {
+            core::arch::asm!("ldr sp, =_estack");
+        }
     }
 
     // Copy initialised static data to RAM
