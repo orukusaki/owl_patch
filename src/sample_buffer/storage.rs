@@ -39,12 +39,14 @@ impl<C: MutableContainer> StorageMut for Mono<C> {
     }
 }
 
-impl<S> ConvertFrom<&S> for S
+impl<C1, C2> ConvertFrom<&Mono<C1>> for Mono<C2>
 where
-    S: StorageMut,
-    <S as Storage>::Item: ConvertFrom<S::Item> + Copy,
+    C1: Container,
+    C2: MutableContainer,
+    C2::Item: ConvertFrom<C1::Item>,
+    C1::Item: Copy,
 {
-    fn convert_from(&mut self, other: &S) {
+    fn convert_from(&mut self, other: &Mono<C1>) {
         for (s1, s2) in self.samples_mut().zip(other.samples()) {
             s1.convert_from(*s2)
         }
@@ -186,6 +188,20 @@ impl<C: Container> IndexMut<usize> for Channels<C> {
     }
 }
 
+impl<C1, C2> ConvertFrom<&Channels<C1>> for Channels<C2>
+where
+    C1: Container,
+    C2: MutableContainer,
+    C2::Item: ConvertFrom<C1::Item>,
+    C1::Item: Copy,
+{
+    fn convert_from(&mut self, other: &Channels<C1>) {
+        for (s1, s2) in self.samples_mut().zip(other.samples()) {
+            s1.convert_from(*s2)
+        }
+    }
+}
+
 /// Samples stored interleaved [l0, r0, l1, r1, l2, r2, ...]
 pub struct Interleaved<C: Container> {
     frames: Box<[Frame<C>]>,
@@ -255,6 +271,20 @@ impl<C: Container> Index<usize> for Interleaved<C> {
 impl<C: MutableContainer> IndexMut<usize> for Interleaved<C> {
     fn index_mut(&mut self, index: usize) -> &mut Frame<C> {
         &mut self.frames[index]
+    }
+}
+
+impl<C1, C2> ConvertFrom<&Interleaved<C1>> for Interleaved<C2>
+where
+    C1: Container,
+    C2: MutableContainer,
+    C2::Item: ConvertFrom<C1::Item>,
+    C1::Item: Copy,
+{
+    fn convert_from(&mut self, other: &Interleaved<C1>) {
+        for (s1, s2) in self.samples_mut().zip(other.samples()) {
+            s1.convert_from(*s2)
+        }
     }
 }
 
