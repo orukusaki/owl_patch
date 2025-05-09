@@ -29,6 +29,7 @@ default = ["talc", "vpo_fastmaths"]
 talc = ["dep:talc"]
 fastmaths = []
 vpo_fastmaths = ["fastmaths"]
+stack_hack = []
 
 [dev-dependencies]
 ctor = "0.2.8"
