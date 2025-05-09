@@ -9,7 +9,7 @@ use core::{
     sync::atomic::{AtomicI32, Ordering},
 };
 
-use alloc::{boxed::Box, sync::Arc};
+use alloc::sync::Arc;
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X10, MonoTextStyle},
     pixelcolor::BinaryColor,
@@ -20,7 +20,7 @@ use embedded_graphics::{
 use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
+    sample_buffer::{BufferByChannel, ConvertFrom, ConvertTo},
 };
 
 use num_traits::Float;
@@ -28,8 +28,7 @@ use num_traits::Float;
 #[patch("Screen test")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
-    let mut buffer: Buffer<Channels, Box<[f32]>> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer = BufferByChannel::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     pv.meta().set_heap_bytes_used(heap_bytes_used());
 
@@ -98,7 +97,7 @@ fn run(mut pv: ProgramVector) -> ! {
         let rms = buffer
             .left()
             .unwrap()
-            .iter()
+            .samples()
             .map(|s| s * s)
             .sum::<f32>()
             .div(audio_settings.blocksize as f32)

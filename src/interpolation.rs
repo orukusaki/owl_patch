@@ -4,6 +4,8 @@ use num_traits::Euclid;
 #[cfg(target_arch = "arm")]
 use num_traits::Float as _;
 
+use crate::sample_buffer::{Buffer, Container, Mono};
+
 /// Linear Interpolation
 pub trait Lerp {
     /// Interpolate two values, alpha should be between 0.0 and 1.0
@@ -33,7 +35,7 @@ impl Lerp for i16 {
 }
 
 /// Create (from, to, alpha) values from a float index and max length (wrapping)
-pub fn partial_index(index: f32, wrap_len: f32) -> (usize, usize, f32) {
+fn partial_index(index: f32, wrap_len: f32) -> (usize, usize, f32) {
     let f = index.floor();
     let alpha = index - f;
 
@@ -44,7 +46,7 @@ pub fn partial_index(index: f32, wrap_len: f32) -> (usize, usize, f32) {
 }
 
 /// Create (y0, y1, y2, y3, alpha) values from a float index and max length (wrapping)
-pub fn quad_index(index: f32, wrap_len: f32) -> (usize, usize, usize, usize, f32) {
+fn quad_index(index: f32, wrap_len: f32) -> (usize, usize, usize, usize, f32) {
     let f = index.floor();
     let alpha = index - f;
 
@@ -92,6 +94,85 @@ impl CubicSmooth for f32 {
         let d = y1;
 
         a * alpha3 + b * alpha2 + c * alpha + d
+    }
+}
+
+/// Linear interpolated index trait
+pub trait IndexLerp {
+    /// Result type
+    type Output;
+
+    /// Get a value by partial index using linear interpolation
+    fn index_lerp(&self, index: f32) -> Self::Output;
+}
+
+impl<C> IndexLerp for Buffer<Mono<C>>
+where
+    C: Container,
+    C::Item: Lerp + Copy,
+{
+    type Output = C::Item;
+
+    fn index_lerp(&self, index: f32) -> Self::Output {
+        let (index0, index1, alpha) = partial_index(index, self.len() as f32);
+
+        let a = self[index0];
+        let b = self[index1];
+        Lerp::lerp(a, b, alpha)
+    }
+}
+
+/// Cubic interpolated index trait
+pub trait IndexCubic {
+    /// Result type
+    type Output;
+
+    /// Get a value by partial index using cubic interpolation
+    fn index_cubic(&self, index: f32) -> Self::Output;
+}
+
+impl<C> IndexCubic for Buffer<Mono<C>>
+where
+    C: Container,
+    C::Item: Cubic + Copy,
+{
+    type Output = C::Item;
+
+    fn index_cubic(&self, index: f32) -> Self::Output {
+        let (index0, index1, index2, index3, alpha) = quad_index(index, self.len() as f32);
+
+        let a = self[index0];
+        let b = self[index1];
+        let c = self[index2];
+        let d = self[index3];
+        Cubic::cubic(a, b, c, d, alpha)
+    }
+}
+
+/// Cubic smooth interpolated index trait
+pub trait IndexCubicSmooth {
+    /// Result type
+    type Output;
+
+    /// Get a value by partial index using cubic smooth interpolation
+    fn index_cubic_smooth(&self, index: f32) -> Self::Output;
+}
+
+impl<C> IndexCubicSmooth for Buffer<Mono<C>>
+where
+    C: Container,
+    C::Item: CubicSmooth + Copy,
+{
+    type Output = C::Item;
+
+    fn index_cubic_smooth(&self, index: f32) -> Self::Output {
+        let (index0, index1, index2, index3, alpha) = quad_index(index, self.len() as f32);
+
+        let a = self[index0];
+        let b = self[index1];
+        let c = self[index2];
+        let d = self[index3];
+        CubicSmooth::cubic_smooth(a, b, c, d, alpha)
     }
 }
 

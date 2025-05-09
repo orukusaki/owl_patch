@@ -1,6 +1,7 @@
+extern crate alloc;
 use core::slice;
 
-use crate::sample_buffer::{Buffer, Interleaved};
+use crate::sample_buffer::{Buffer, Interleaved, InterleavedBufferMut, InterleavedBufferRef};
 
 use super::{
     AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
@@ -81,7 +82,7 @@ impl AudioBuffers {
     /// [self.settings.channels]: AudioSettings
     pub fn run(
         &mut self,
-        mut f: impl FnMut(&Buffer<Interleaved, &mut [i32]>, &mut Buffer<Interleaved, &mut [i32]>),
+        mut f: impl FnMut(&Buffer<Interleaved<&[i32]>>, &mut Buffer<Interleaved<&mut [i32]>>),
     ) -> ! {
         match self.settings.format {
             AudioFormat::Format24B16 => loop {
@@ -96,7 +97,7 @@ impl AudioBuffers {
     /// Process the next audio buffer
     pub fn process(
         &mut self,
-        f: impl FnMut(&Buffer<Interleaved, &mut [i32]>, &mut Buffer<Interleaved, &mut [i32]>),
+        f: impl FnMut(&Buffer<Interleaved<&[i32]>>, &mut Buffer<Interleaved<&mut [i32]>>),
     ) {
         match self.settings.format {
             AudioFormat::Format24B16 => self.process_shifted::<16>(f),
@@ -106,7 +107,7 @@ impl AudioBuffers {
 
     fn process_shifted<const SHIFT: i32>(
         &mut self,
-        mut f: impl FnMut(&Buffer<Interleaved, &mut [i32]>, &mut Buffer<Interleaved, &mut [i32]>),
+        mut f: impl FnMut(&Buffer<Interleaved<&[i32]>>, &mut Buffer<Interleaved<&mut [i32]>>),
     ) {
         let Some(program_ready) = self.program_ready else {
             panic!("no audio available")
@@ -133,12 +134,12 @@ impl AudioBuffers {
             )
         };
 
-        let mut input_buffer: Buffer<Interleaved, &mut [i32]> =
-            Buffer::new_mut(self.settings.channels, self.settings.blocksize, input);
+        let mut input_buffer = InterleavedBufferMut::new(input, self.settings.channels);
         input_buffer <<= SHIFT;
 
-        let mut output_buffer: Buffer<Interleaved, &mut [i32]> =
-            Buffer::new_mut(self.settings.channels, self.settings.blocksize, output);
+        let input_buffer = InterleavedBufferRef::new(input, self.settings.channels);
+
+        let mut output_buffer = InterleavedBufferMut::new(output, self.settings.channels);
 
         f(&input_buffer, &mut output_buffer);
 

@@ -13,7 +13,7 @@ use owl_patch::{
     fft::{FftSize, RealFft},
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, ConvertFrom, ConvertTo},
+    sample_buffer::{ConvertFrom, ConvertTo, InterleavedBuffer},
     PatchParameterId,
 };
 
@@ -31,7 +31,8 @@ const MAX_BANDS_POWER: f32 = ((FFT_WIDTH as usize >> 1) - 1).count_ones() as f32
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
 
-    let mut buffer = Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer =
+        InterleavedBuffer::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     let parameters = pv.parameters();
     parameters.register(PatchParameterId::PARAMETER_A, "Bands");
@@ -73,7 +74,7 @@ fn run(mut pv: ProgramVector) -> ! {
         buffer.convert_from(input);
 
         for samples in buffer.frames_mut() {
-            let slice = &mut samples[..2];
+            let slice = &samples.as_slice()[..2];
             let frame = Frame::from_slice(slice);
             samples[0] = unit.tick(frame)[0];
         }

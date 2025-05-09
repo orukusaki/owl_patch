@@ -4,19 +4,18 @@
 #![no_std]
 extern crate alloc;
 
-use alloc::boxed::Box;
 use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
+    sample_buffer::{BufferByChannel, ConvertFrom, ConvertTo},
 };
 
 #[patch("Minimal")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
     // allocate a working buffer (uses vec intenally)
-    let mut buffer: Buffer<Channels, Box<[f32]>> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer: BufferByChannel<f32> =
+        BufferByChannel::new(audio_settings.channels, audio_settings.blocksize);
 
     // For correct reporting, this should be called after all heap allocations are done with.
     pv.meta().set_heap_bytes_used(heap_bytes_used());

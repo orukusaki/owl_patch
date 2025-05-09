@@ -8,15 +8,14 @@
 use owl_patch::{
     patch,
     program_vector::{heap_bytes_used, ProgramVector},
-    sample_buffer::{Buffer, Channels, ConvertFrom, ConvertTo},
+    sample_buffer::{BufferByChannel, ConvertFrom, ConvertTo},
     PatchButtonId, PatchParameterId,
 };
 
 #[patch("Parameters Example")]
 fn run(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio().settings;
-    let mut buffer: Buffer<Channels, _> =
-        Buffer::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer = BufferByChannel::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     let parameters = pv.parameters();
 
