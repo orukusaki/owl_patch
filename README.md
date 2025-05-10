@@ -19,8 +19,7 @@ use owl_patch::{
 #[patch("Example Patch")]
 fn main(mut pv: ProgramVector) -> ! {
     let audio_settings = pv.audio.settings;
-    let mut buffer: BufferByChannel<f32> =
-        BufferByChannel::new(audio_settings.channels, audio_settings.blocksize);
+    let mut buffer = BufferByChannel::<f32>::new(audio_settings.channels, audio_settings.blocksize);
 
     pv.meta.set_heap_bytes_used(heap_bytes_used());
     pv.audio.run(|input, output| {
@@ -43,7 +42,7 @@ rustup target add thumbv7em-none-eabihf
 3. Create a new binary package using Cargo, and add this repo as a dependency:
 ```toml   
 [dependencies]
-owl_patch = "0.5.0"
+owl_patch = "0.6.0"
 ```
 It is also a good idea to add this to your Cargo.toml:
 ```toml
@@ -126,7 +125,8 @@ Experimental, but already pretty usable.
 - Write to screen buffer (on devices with a screen)
 
 ### Todo List:
-- Empty!!
+- Wasm support
+- Faust support
 
 ### Maybe pile:
 
