@@ -5,12 +5,13 @@ edition = "2021"
 authors = ["orukusaki"]
 
 [dependencies]
-owl_patch = {path = '../'}
+owl_patch = {path = '../', features = ["stack_hack"]}
 fundsp = { default-features = false, git = "https://github.com/SamiPerttu/fundsp", rev="c4e1e0bbea6a78d30b4217925bd24febbe5ffc4e"}
 num-traits = { version = "0.2.19", default-features = false, features = ["libm"]}
 num-complex = { version = "0.4.6", default-features = false, features = ["libm"]}
 embedded-graphics = "0.8.1"
 spin = "0.9.8"
+mi-plaits-dsp = {git = "https://github.com/sourcebox/mi-plaits-dsp-rs", version = "0.1.0"}
 
 [profile.release]
 strip = "debuginfo"

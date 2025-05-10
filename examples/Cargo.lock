@@ -516,6 +516,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
+name = "mi-plaits-dsp"
+version = "0.1.0"
+source = "git+https://github.com/sourcebox/mi-plaits-dsp-rs#aad1589cd2ac75dc0e7bc1cbca0c9aad14c8208a"
+dependencies = [
+ "num-traits",
+ "spin 0.10.0",
+]
+
+[[package]]
 name = "microfft"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -659,7 +668,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "owl_patch_macros",
- "spin",
+ "spin 0.9.8",
  "talc",
 ]
 
@@ -669,10 +678,11 @@ version = "0.1.0"
 dependencies = [
  "embedded-graphics",
  "fundsp",
+ "mi-plaits-dsp",
  "num-complex",
  "num-traits",
  "owl_patch",
- "spin",
+ "spin 0.9.8",
 ]
 
 [[package]]
@@ -872,6 +882,15 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+dependencies = [
+ "lock_api",
+]
+
+[[package]]
+name = "spin"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5fe4ccb98d9c292d56fec89a5e07da7fc4cf0dc11e156b41793132775d3e591"
 dependencies = [
  "lock_api",
 ]
