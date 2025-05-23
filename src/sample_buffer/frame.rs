@@ -76,3 +76,12 @@ impl<C: Container> From<C> for Frame<C> {
         Self(samples)
     }
 }
+
+impl<C> Clone for Frame<C>
+where
+    C: Container + Clone,
+{
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}

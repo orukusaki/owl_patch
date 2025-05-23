@@ -220,35 +220,6 @@ impl<'a, T> Buffer<Interleaved<&'a mut [T]>> {
     }
 }
 
-// impl<S: StorageMut> Buffer<S> { TODO: reimplement
-//     /// Create a new buffer from mutable data allocated externally (taking ownership).
-//     ///
-//     /// ```
-//     /// # use owl_patch::sample_buffer::*;
-//     /// let data: Vec<f32> = vec![0.0f32; 8];
-//     /// let buffer: = BufferByChannel::new_from(2, 4, data);
-//     ///
-//     /// buffer.channels().for_each(|ch| assert_eq!(&[0.0; 4], ch.samples()));
-//     /// ```
-//     ///
-//     /// ```
-//     /// # use owl_patch::sample_buffer::*;
-//     /// let data: Box<[f32]> = vec![0.0f32; 8].into_boxed_slice();
-//     /// let buffer = InterleavedBuffer::new_from(2, 4, data);
-//     ///
-//     /// buffer.frames().for_each(|frame| assert_eq!(&[0.0; 2], frame));
-//     /// ```
-//     pub fn new_from(channels: usize, blocksize: usize, samples: C) -> Self {
-//         assert_eq!(channels * blocksize, samples.as_ref().len());
-//         Self {
-//             samples,
-//             channels,
-//             blocksize,
-//             _storage: PhantomData,
-//         }
-//     }
-// }
-
 impl<'a, T> Buffer<Mono<&'a [T]>> {
     /// Create a new mono buffer with borrowed samples.
     /// ```
@@ -475,6 +446,17 @@ where
 {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.storage.index_mut(index)
+    }
+}
+
+impl<S> Clone for Buffer<S>
+where
+    S: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            storage: self.storage.clone(),
+        }
     }
 }
 

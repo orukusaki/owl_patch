@@ -106,6 +106,17 @@ where
     }
 }
 
+impl<C> Clone for Mono<C>
+where
+    C: Container + Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            samples: self.samples.clone(),
+        }
+    }
+}
+
 /// Samples stored one channel at a time: [l0, l1, l3, ... r0, r1, r2, ...]
 pub struct Channels<C: Container> {
     channels: Box<[Buffer<Mono<C>>]>,
@@ -202,6 +213,18 @@ where
     }
 }
 
+impl<C> Clone for Channels<C>
+where
+    C: Container,
+    Buffer<Mono<C>>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            channels: self.channels.clone(),
+        }
+    }
+}
+
 /// Samples stored interleaved [l0, r0, l1, r1, l2, r2, ...]
 pub struct Interleaved<C: Container> {
     frames: Box<[Frame<C>]>,
@@ -271,6 +294,18 @@ impl<C: Container> Index<usize> for Interleaved<C> {
 impl<C: MutableContainer> IndexMut<usize> for Interleaved<C> {
     fn index_mut(&mut self, index: usize) -> &mut Frame<C> {
         &mut self.frames[index]
+    }
+}
+
+impl<C> Clone for Interleaved<C>
+where
+    C: Container,
+    Frame<C>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            frames: self.frames.clone(),
+        }
     }
 }
 
