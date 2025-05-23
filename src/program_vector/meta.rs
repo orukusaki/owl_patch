@@ -45,8 +45,8 @@ pub struct Meta {
     register_patch: Option<
         unsafe extern "C" fn(
             name: *const ::core::ffi::c_char,
-            inputChannels: u8,
-            outputChannels: u8,
+            input_channels: u8,
+            output_channels: u8,
         ),
     >,
 }
@@ -63,8 +63,8 @@ impl Meta {
         register_patch: Option<
             unsafe extern "C" fn(
                 name: *const ::core::ffi::c_char,
-                inputChannels: u8,
-                outputChannels: u8,
+                input_channels: u8,
+                output_channels: u8,
             ),
         >,
     ) -> Self {
