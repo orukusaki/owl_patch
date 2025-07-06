@@ -73,7 +73,7 @@ fn run(mut pv: ProgramVector) -> ! {
 
         buffer.convert_from(input);
 
-        for samples in buffer.frames_mut() {
+        for mut samples in buffer.frames_mut() {
             let slice = &samples.as_slice()[..2];
             let frame = Frame::from_slice(slice);
             samples[0] = unit.tick(frame)[0];

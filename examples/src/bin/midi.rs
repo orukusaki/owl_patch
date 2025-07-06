@@ -41,7 +41,7 @@ fn run(mut pv: ProgramVector) -> ! {
 
     // Main audio loop
     pv.audio.run(|_input, output| {
-        for frame in buffer.frames_mut() {
+        for mut frame in buffer.frames_mut() {
             let sample = osc.next();
 
             frame.fill(sample);

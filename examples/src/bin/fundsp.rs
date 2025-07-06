@@ -51,7 +51,7 @@ fn run(mut pv: ProgramVector) -> ! {
 
         buffer.convert_from(input);
 
-        for frame in buffer.frames_mut() {
+        for mut frame in buffer.frames_mut() {
             let fundsp_frame = Frame::from_slice(&frame.as_slice()[..2]);
             let output = network.tick(fundsp_frame);
             frame.as_slice_mut()[..2].copy_from_slice(output.as_slice());

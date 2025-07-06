@@ -193,7 +193,7 @@ impl<C: Container> Index<usize> for Channels<C> {
     }
 }
 
-impl<C: Container> IndexMut<usize> for Channels<C> {
+impl<C: MutableContainer> IndexMut<usize> for Channels<C> {
     fn index_mut(&mut self, index: usize) -> &mut <Self as Index<usize>>::Output {
         &mut self.channels[index]
     }
@@ -227,13 +227,15 @@ where
 
 /// Samples stored interleaved [l0, r0, l1, r1, l2, r2, ...]
 pub struct Interleaved<C: Container> {
-    frames: Box<[Frame<C>]>,
+    samples: C,
+    nchannels: usize
 }
 
 impl<T: Default + Clone> Interleaved<Box<[T]>> {
     pub(crate) fn new(nchannels: usize, blocksize: usize) -> Self {
         Self {
-            frames: (0..blocksize).map(|_| Frame::new(nchannels)).collect(),
+            samples: vec![T::default(); blocksize * nchannels].into_boxed_slice(),
+            nchannels
         }
     }
 }
@@ -241,70 +243,81 @@ impl<T: Default + Clone> Interleaved<Box<[T]>> {
 impl<C: Container> Storage for Interleaved<C> {
     type Item = C::Item;
     fn samples(&self) -> impl Iterator<Item = &Self::Item> {
-        self.frames().flat_map(|frame: &Frame<C>| frame.samples())
+        self.samples.as_ref().iter()
     }
 }
 
 impl<C: MutableContainer> StorageMut for Interleaved<C> {
     fn samples_mut(&mut self) -> impl Iterator<Item = &mut Self::Item> {
-        self.frames_mut().flat_map(|frame| frame.samples_mut())
+        self.samples.as_mut().iter_mut()
     }
 }
 
 impl<'a, T> Interleaved<&'a [T]> {
     pub(crate) fn new_ref(samples: &'a [T], nchannels: usize) -> Self {
-        let frames = samples
-            .chunks(nchannels)
-            .map(|chunk| chunk.into())
-            .collect();
-        Self { frames }
+        Self { samples, nchannels }
     }
 }
 
 impl<'a, T> Interleaved<&'a mut [T]> {
     pub(crate) fn new_mut(samples: &'a mut [T], nchannels: usize) -> Self {
-        let frames = samples
-            .chunks_mut(nchannels)
-            .map(|chunk| chunk.into())
-            .collect();
-        Self { frames }
+        Self { samples, nchannels }
     }
 }
 
 impl<C: Container> Interleaved<C> {
-    pub(crate) fn frames(&self) -> impl ExactSizeIterator<Item = &Frame<C>> {
-        self.frames.iter()
+    /// Get an iterator over frames in the buffer
+    pub fn frames(&self) -> impl ExactSizeIterator<Item = Frame<&[<C as Container>::Item]>> {
+        self.samples
+            .as_ref()
+            .chunks_exact(self.nchannels)
+            .map(|c| c.into())
     }
 }
 
 impl<C: MutableContainer> Interleaved<C> {
-    pub(crate) fn frames_mut(&mut self) -> impl ExactSizeIterator<Item = &mut Frame<C>> {
-        self.frames.iter_mut()
+    /// Get a mutable iterator over frames in the buffer
+    pub fn frames_mut(&mut self) -> impl ExactSizeIterator<Item = Frame<&mut [<C as Container>::Item]>> {
+        self.samples
+            .as_mut()
+            .chunks_exact_mut(self.nchannels)
+            .map(|c| c.into())
     }
 }
 
-impl<C: Container> Index<usize> for Interleaved<C> {
-    type Output = Frame<C>;
+impl<C: Container> Index<usize> for Interleaved<C> 
+{
+    type Output = Frame<[<C as Container>::Item]>;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.frames[index]
+        self.samples
+            .as_ref()
+            .chunks_exact(self.nchannels)
+            .nth(index)
+            .unwrap()
+            .into()
     }
 }
 
 impl<C: MutableContainer> IndexMut<usize> for Interleaved<C> {
-    fn index_mut(&mut self, index: usize) -> &mut Frame<C> {
-        &mut self.frames[index]
+    fn index_mut(&mut self, index: usize) -> &mut <Self as Index<usize>>::Output {
+        self.samples
+            .as_mut()
+            .chunks_exact_mut(self.nchannels)
+            .nth(index)
+            .unwrap()
+            .into()
     }
 }
 
 impl<C> Clone for Interleaved<C>
 where
-    C: Container,
-    Frame<C>: Clone,
+    C: Container + Clone,
 {
     fn clone(&self) -> Self {
         Self {
-            frames: self.frames.clone(),
+            samples: self.samples.clone(),
+            nchannels: self.nchannels
         }
     }
 }
@@ -332,7 +345,7 @@ where
 {
     fn convert_from(&mut self, other: &Channels<C2>) {
         for (n, ch) in other.channels().enumerate() {
-            for (frame, s) in self.frames_mut().zip(ch.storage.samples()) {
+            for (mut frame, s) in self.frames_mut().zip(ch.storage.samples()) {
                 frame[n].convert_from(*s)
             }
         }

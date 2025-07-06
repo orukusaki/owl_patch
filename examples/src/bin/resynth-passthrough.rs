@@ -39,7 +39,7 @@ fn run(mut pv: ProgramVector) -> ! {
     pv.audio.run(|input, output| {
         buffer.convert_from(input);
 
-        for frame in buffer.frames_mut() {
+        for mut frame in buffer.frames_mut() {
             let fundsp_frame = Frame::from_slice(&frame.as_slice()[..1]);
             let output = unit.tick(fundsp_frame);
             frame.as_slice_mut().copy_from_slice(output.as_slice());

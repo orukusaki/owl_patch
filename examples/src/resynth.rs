@@ -3,7 +3,6 @@
 // Shamelessly yoinked from FunDsp, modified to use the CMSIS fft transform
 extern crate alloc;
 
-use alloc::vec;
 use alloc::vec::Vec;
 use fundsp::audionode::*;
 use fundsp::math::*;
@@ -11,6 +10,7 @@ use fundsp::signal::*;
 use fundsp::*;
 use num_complex::Complex32;
 use owl_patch::fft::RealFft;
+use owl_patch::sample_buffer::BufferByChannel;
 
 /// Number of overlapping FFT windows.
 const WINDOWS: usize = 4;
@@ -23,13 +23,13 @@ pub struct FftWindow {
     /// Equals the length of each input and output channel vector.
     length: usize,
     /// Input samples for each input channel.
-    input: Vec<Vec<f32>>,
+    input: BufferByChannel<f32>,
     /// Input samples for each input channel in frequency domain.
-    input_fft: Vec<Vec<Complex32>>,
+    input_fft: BufferByChannel<Complex32>,
     /// Output samples for each output channel in frequency domain.
-    output_fft: Vec<Vec<Complex32>>,
+    output_fft: BufferByChannel<Complex32>,
     /// Output samples for each output channel.
-    output: Vec<Vec<f32>>,
+    output: BufferByChannel<f32>,
     /// Sample rate for convenience.
     sample_rate: f32,
     /// Current index into input and output vectors.
@@ -76,10 +76,10 @@ impl FftWindow {
         let complex_len = (length >> 1) + 1;
         Self {
             length,
-            input: vec![vec!(0.0; length); inputs],
-            input_fft: vec![vec![Complex32::default(); complex_len]; inputs],
-            output_fft: vec![vec![Complex32::default(); complex_len]; outputs],
-            output: vec![vec!(0.0; length); outputs],
+            input: BufferByChannel::new(inputs, length),
+            input_fft: BufferByChannel::new(inputs, complex_len),
+            output_fft: BufferByChannel::new(outputs, complex_len),
+            output: BufferByChannel::new(outputs, length),
             sample_rate: DEFAULT_SR as f32,
             index,
             samples: 0,
@@ -94,7 +94,7 @@ impl FftWindow {
     /// Write input for current index.
     #[inline]
     fn write<N: Size<f32>>(&mut self, input: &Frame<f32, N>, window_value: f32) {
-        for (item, channel) in input.iter().zip(self.input.iter_mut()) {
+        for (item, channel) in input.iter().zip(self.input.channels_mut()) {
             channel[self.index] = item * window_value;
         }
     }
@@ -107,7 +107,7 @@ impl FftWindow {
 
     /// Set FFT outputs to all zeros.
     fn clear_output(&mut self) {
-        for channel in self.output_fft.iter_mut() {
+        for channel in self.output_fft.channels_mut() {
             channel.fill(Complex32::default());
         }
     }
@@ -123,11 +123,11 @@ impl FftWindow {
         self.samples = 0;
         self.index = start_index;
 
-        for channel in self.input.iter_mut() {
+        for channel in self.input.channels_mut() {
             channel.fill(0.0);
         }
 
-        for channel in self.output.iter_mut() {
+        for channel in self.output.channels_mut() {
             channel.fill(0.0);
         }
     }
@@ -147,8 +147,8 @@ impl FftWindow {
 
     fn forward_transform(&mut self, fft: &RealFft) {
         let last = self.bins() - 1;
-        for (input, input_fft) in self.input.iter_mut().zip(self.input_fft.iter_mut()) {
-            fft.fft(input.as_mut_slice(), input_fft.as_mut_slice());
+        for (input, input_fft) in self.input.channels_mut().zip(self.input_fft.channels_mut()) {
+            fft.fft(input.as_slice_mut(), input_fft.as_slice_mut());
             // unpack
             input_fft[last] = Complex32::new(input_fft[0].im, 0.0);
             input_fft[0].im = 0.0;
@@ -157,11 +157,15 @@ impl FftWindow {
 
     fn inverse_transform(&mut self, fft: &RealFft) {
         let last = self.bins() - 1;
-        for (output_fft, output_scalar) in self.output_fft.iter_mut().zip(self.output.iter_mut()) {
+        for (output_fft, output_scalar) in self
+            .output_fft
+            .channels_mut()
+            .zip(self.output.channels_mut())
+        {
             // repack
             output_fft[0].im = output_fft[last].re;
 
-            fft.ifft(output_fft.as_mut_slice(), output_scalar.as_mut_slice());
+            fft.ifft(output_fft.as_slice_mut(), output_scalar.as_slice_mut());
         }
     }
 }

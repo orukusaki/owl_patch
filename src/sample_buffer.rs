@@ -3,7 +3,7 @@
 mod convert;
 pub use convert::{ConvertFrom, ConvertTo};
 mod frame;
-use frame::Frame;
+pub use frame::Frame;
 mod container;
 pub use container::{Container, MutableContainer};
 mod storage;
@@ -207,7 +207,10 @@ impl<'a, T> Buffer<Interleaved<&'a mut [T]>> {
     ///
     /// let mut samples = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
     /// let mut buffer = InterleavedBufferMut::<f32>::new(&mut samples, 2);
-    /// buffer[1][0] = -3.0;
+    /// let mut frame = &mut buffer[1];
+    /// frame[0] = -3.0;
+    /// 
+    /// (&mut buffer[1])[0] = -3.0;
     ///
     /// assert_eq!(&[0.0, 1.0], buffer[0].as_slice());
     /// assert_eq!(&[-3.0, 3.0], buffer[1].as_slice());
@@ -290,7 +293,7 @@ impl<C: Container> Buffer<Interleaved<C>> {
     ///
     /// buffer.frames().for_each(|frame| assert_eq!(&[0.0; 2], frame.as_slice()));
     /// ```
-    pub fn frames(&self) -> impl ExactSizeIterator<Item = &Frame<C>> {
+    pub fn frames(&self) -> impl ExactSizeIterator<Item = Frame<&[<C as Container>::Item]>> {
         self.storage.frames()
     }
 }
@@ -301,12 +304,12 @@ impl<C: MutableContainer> Buffer<Interleaved<C>> {
     /// # use owl_patch::sample_buffer::*;
     /// let mut buffer = InterleavedBuffer::<f32>::new(2, 2);
     ///
-    /// buffer.frames_mut().for_each(|frame| frame.as_slice_mut().copy_from_slice(&[1.0, 2.0]));
+    /// buffer.frames_mut().for_each(|mut frame| frame.as_slice_mut().copy_from_slice(&[1.0, 2.0]));
     ///
     /// assert_eq!(&[1.0, 2.0], buffer[0].as_slice());
     /// assert_eq!(&[1.0, 2.0], buffer[1].as_slice());
     /// ```
-    pub fn frames_mut(&mut self) -> impl ExactSizeIterator<Item = &mut Frame<C>> {
+    pub fn frames_mut(&mut self) -> impl ExactSizeIterator<Item = Frame<&mut [<C as Container>::Item]>> {
         self.storage.frames_mut()
     }
 }
@@ -426,6 +429,16 @@ impl<S: StorageMut> Buffer<S> {
     /// Get a mutable iterator over all the samples in the buffer
     pub fn samples_mut(&mut self) -> impl Iterator<Item = &mut S::Item> {
         self.storage.samples_mut()
+    }
+}
+
+impl<S: StorageMut> Buffer<S> 
+where S::Item: Clone {
+    /// Copy from another equivalent buffer
+    pub fn copy_from(&mut self, other: &Self) {
+        for (a, b) in self.samples_mut().zip(other.samples()) {
+            *a = b.clone();
+        }
     }
 }
 

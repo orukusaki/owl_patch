@@ -89,7 +89,7 @@ fn run(mut pv: ProgramVector) -> ! {
         let slice_end = (slice_start + slice_size).min(sample_buffer.len() as f32);
         let inc = parameters.get(PatchParameterId::PARAMETER_B) * 2.0;
 
-        for frame in buffer.frames_mut() {
+        for mut frame in buffer.frames_mut() {
             frame.fill(sample_buffer.index_cubic_smooth(index));
 
             index += inc;
