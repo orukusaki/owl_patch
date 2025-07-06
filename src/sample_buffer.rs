@@ -221,6 +221,11 @@ impl<'a, T> Buffer<Interleaved<&'a mut [T]>> {
             storage: Interleaved::new_mut(samples, nchannels),
         }
     }
+
+    /// Downgrade this mutable buffer into an immutable one
+    pub fn into_ref(self) -> Buffer<Interleaved<&'a [T]>> {
+        Buffer {storage: self.storage.into_ref()}
+    }
 }
 
 impl<'a, T> Buffer<Mono<&'a [T]>> {

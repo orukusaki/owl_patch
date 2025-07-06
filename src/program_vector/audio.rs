@@ -1,7 +1,7 @@
 extern crate alloc;
 use core::slice;
 
-use crate::sample_buffer::{Buffer, Interleaved, InterleavedBufferMut, InterleavedBufferRef};
+use crate::sample_buffer::{Buffer, Interleaved, InterleavedBufferMut};
 
 use super::{
     AUDIO_FORMAT_24B16, AUDIO_FORMAT_24B32, AUDIO_FORMAT_CHANNEL_MASK, AUDIO_FORMAT_FORMAT_MASK,
@@ -137,11 +137,9 @@ impl AudioBuffers {
         let mut input_buffer = InterleavedBufferMut::new(input, self.settings.channels);
         input_buffer <<= SHIFT;
 
-        let input_buffer = InterleavedBufferRef::new(input, self.settings.channels);
-
         let mut output_buffer = InterleavedBufferMut::new(output, self.settings.channels);
 
-        f(&input_buffer, &mut output_buffer);
+        f(&input_buffer.into_ref(), &mut output_buffer);
 
         output_buffer >>= SHIFT;
     }

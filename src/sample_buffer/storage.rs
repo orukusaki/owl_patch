@@ -263,6 +263,10 @@ impl<'a, T> Interleaved<&'a mut [T]> {
     pub(crate) fn new_mut(samples: &'a mut [T], nchannels: usize) -> Self {
         Self { samples, nchannels }
     }
+
+    pub(crate) fn into_ref(self) -> Interleaved<&'a [T]> {
+        Interleaved { samples: self.samples, nchannels: self.nchannels }
+    }
 }
 
 impl<C: Container> Interleaved<C> {
