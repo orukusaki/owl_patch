@@ -168,7 +168,7 @@ impl ProgramVector {
     }
 
     /// Get screen
-    pub fn screen(&mut self) -> Screen {
+    pub fn screen(&mut self) -> Screen<'_> {
         Screen::new(&self.service_call)
     }
 
@@ -187,7 +187,7 @@ impl ProgramVector {
     }
 
     /// Get resources service
-    pub fn resources(&self) -> Resources {
+    pub fn resources(&self) -> Resources<'_> {
         Resources::new(&self.service_call)
     }
 
