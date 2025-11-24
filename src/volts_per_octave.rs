@@ -1,5 +1,7 @@
 //! Sample / Volts / Frequency / Note conversions using calibrated device data
 use core::ops::{Div, Mul};
+#[cfg(target_arch = "arm")]
+use num_traits::float::Float;
 
 #[cfg(all(feature = "vpo_fastmaths", target_arch = "arm"))]
 use super::fastmaths::FastFloat as _;
@@ -148,6 +150,12 @@ impl From<Note> for Volts {
     }
 }
 
+impl From<NoteWithBend> for Volts {
+    fn from(note_with_bend: NoteWithBend) -> Self {
+        ((note_with_bend.note.0 as f32 - 69.0 + (note_with_bend.bend as f32 / 128.0)) / 12.0).into()
+    }
+}
+
 /// Midi Note Number. Can be directly converted to/from Frequency and Volts
 /// ```
 /// # use owl_patch::volts_per_octave::*;
@@ -177,6 +185,50 @@ impl From<Volts> for Note {
 }
 
 impl From<Frequency> for Note {
+    fn from(freq: Frequency) -> Self {
+        let volts: Volts = freq.into();
+        volts.into()
+    }
+}
+
+/// Midi Note Number With pitch bend component. Can be directly converted to/from Frequency and Volts
+/// ```
+/// # use owl_patch::volts_per_octave::*;
+/// let note = NoteWithBend{note: Note(69), bend: 63};
+/// assert_eq!(Volts::from(note), Volts(0.041015625));
+/// assert_eq!(NoteWithBend::from(Volts::from(note)), note);
+/// assert_eq!(Frequency::from(note), Frequency(452.68863));
+/// assert_eq!(NoteWithBend::from(Frequency::from(note)), note);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd, Ord)]
+pub struct NoteWithBend{
+    /// Note
+    pub note: Note, 
+    /// Pitch bend amount
+    pub bend: i8,
+}
+
+impl From<Note> for NoteWithBend {
+    fn from(note: Note) -> Self {
+        NoteWithBend{note, bend: 0}
+    }
+}
+
+impl From<Volts> for NoteWithBend {
+    fn from(volts: Volts) -> Self {
+        let value = 12.0 * volts.0 + 69.0;
+        let note_number = value.round();
+        let bend = ((value - note_number) * 128.0) as i8;
+
+        Self {
+            note: (note_number as u8).into(),
+            bend
+        }
+        
+    }
+}
+
+impl From<Frequency> for NoteWithBend {
     fn from(freq: Frequency) -> Self {
         let volts: Volts = freq.into();
         volts.into()
@@ -220,6 +272,13 @@ impl From<Volts> for Frequency {
 impl From<Note> for Frequency {
     fn from(note: Note) -> Self {
         let volts: Volts = note.into();
+        volts.into()
+    }
+}
+
+impl From<NoteWithBend> for Frequency {
+    fn from(note_with_bend: NoteWithBend) -> Self {
+        let volts: Volts = note_with_bend.into();
         volts.into()
     }
 }
