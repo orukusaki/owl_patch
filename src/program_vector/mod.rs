@@ -224,6 +224,10 @@ impl ProgramVector {
 
 #[cfg(all(feature = "talc", target_arch = "arm"))]
 mod talc_heap {
+
+    use core::sync::atomic::AtomicBool;
+    use core::sync::atomic::Ordering;
+    use lock_api::GuardNoSend;
     use talc::*;
 
     use crate::ffi::program_vector::MemorySegment;
@@ -234,8 +238,33 @@ mod talc_heap {
         }
     }
 
+    pub struct CriticalSectionRawMutex {
+        restore: AtomicBool
+    }
+    unsafe impl lock_api::RawMutex for CriticalSectionRawMutex {
+        const INIT: Self = Self{restore: AtomicBool::new(false)};
+    
+        type GuardMarker = GuardNoSend;
+    
+        fn lock(&self) {
+            self.restore.store( cortex_m::register::primask::read().is_active(), Ordering::Relaxed);
+            cortex_m::interrupt::disable(); 
+        }
+    
+        fn try_lock(&self) -> bool {
+            self.lock();
+            true
+        }
+    
+        unsafe fn unlock(&self) {
+            if self.restore.load(Ordering::Relaxed) {
+                cortex_m::interrupt::enable(); 
+            }
+        }
+    }
+
     #[global_allocator]
-    pub static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talc::new(ErrOnOom).lock();
+    pub static ALLOCATOR: Talck<CriticalSectionRawMutex, ErrOnOom> = Talc::new(ErrOnOom).lock();
 
     /// get total bytes allocated at present
     pub fn heap_bytes_used() -> usize {

@@ -19,6 +19,8 @@ owl_patch_macros = "0.1.0"
 cfg-if = "1.0.0"
 cmsis_dsp_sys_pregenerated = "0.1.0"
 embedded-graphics-core = "0.4.0"
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"], optional = true }
+lock_api = "0.4.13"
 
 [build-dependencies]
 bindgen = {version = "0.70.1"}
@@ -26,7 +28,7 @@ cc = "1.1.30"
 
 [features]
 default = ["talc", "vpo_fastmaths"]
-talc = ["dep:talc"]
+talc = ["dep:talc", "dep:cortex-m"]
 fastmaths = []
 vpo_fastmaths = ["fastmaths"]
 stack_hack = []
