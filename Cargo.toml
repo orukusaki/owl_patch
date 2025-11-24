@@ -1,7 +1,7 @@
 [package]
 name = "owl_patch"
 description = "Rust SDK for Rebel Technology Owl2/3 devices"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["Peter Smith <peter@orukusaki.co.uk>"]
 license = "MIT OR Apache-2.0"
