@@ -91,7 +91,10 @@ fn build_network(
     release: Shared,
     fft: RealFft,
 ) -> Box<An<impl AudioNode>> {
-    Box::new({
+    Box::new(
+        (pass() | highpass_hz(50.0, 0.5)) >>
+        
+        {
         let mut envelopes = EnvelopeBank::<BINS>::new(0.0, 0.0);
         let mut amplitudes = [0.0; BINS];
 
