@@ -2,7 +2,7 @@ use super::*;
 extern crate alloc;
 
 use alloc::{boxed::Box, vec};
-use core::ops::{Index, IndexMut};
+use core::{iter::Sum, ops::{Index, IndexMut}};
 
 /// Frame - a container holding one sample for each channel
 #[derive(Debug, Default)]
@@ -248,5 +248,22 @@ where
         }
 
         self
+    }
+}
+
+impl<C, F> Sum<Frame<C>> for Frame<Box<[F]>> 
+where 
+    C: Container<Item = F>, F: Copy + Default,
+    Frame<Box<[F]>>: AddAssign<Frame<C>>,
+ {
+    fn sum<I: Iterator<Item = Frame<C>>>(iter: I) -> Self {
+        let mut peakable = iter.peekable();
+        let first = peakable.peek().expect("cannot sum empty iter");
+        let mut f = Frame::new(first.len());
+
+        for i in peakable {
+            f += i;
+        }
+        f
     }
 }
